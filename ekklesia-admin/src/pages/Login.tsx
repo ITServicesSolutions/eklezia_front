@@ -13,18 +13,32 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      const response = await axiosInstance.post('/auth/login', {
-        email,
-        password,
+      // Crée un formData avec les bons noms de champs pour FastAPI
+      const formData = new URLSearchParams();
+      formData.append('username', email); // FastAPI OAuth2PasswordRequestForm attend "username"
+      formData.append('password', password);
+
+      // Envoie la requête POST vers le bon endpoint
+      const response = await axiosInstance.post('/api/v1/auth/login', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
       });
 
       if (response.data.access_token) {
+        // Stocke le token JWT pour les requêtes futures
         localStorage.setItem('ekklesia-token', response.data.access_token);
-        navigate('/');
+        navigate('/'); // Redirige vers le dashboard
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Failed to login. Please check your credentials.');
+      if (err.response && err.response.status === 401) {
+        setError('Incorrect email or password.');
+      } else if (err.response && err.response.status === 404) {
+        setError('Endpoint not found. Check the API URL.');
+      } else {
+        setError('Failed to login. Please try again.');
+      }
     }
   };
 
