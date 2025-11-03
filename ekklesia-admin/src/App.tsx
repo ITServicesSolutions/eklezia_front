@@ -28,25 +28,18 @@ const AdminLayout: React.FC = () => (
 const AppRoutes: React.FC = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
-    <Route
-      path="/*"
-      element={
-        <PrivateRoute>
-          <Routes>
-            <Route element={<AdminLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/users" element={<Users />} />
-              <Route path="/payments" element={<Payments />} />
-              <Route path="/programs" element={<Programs />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/medias" element={<Medias />} />
-              <Route path="/contributions" element={<Contributions />} />
-              <Route path="/livestreams" element={<LiveStreams />} />
-            </Route>
-          </Routes>
-        </PrivateRoute>
-      }
-    />
+    <Route element={<PrivateRoute />}>
+      <Route element={<AdminLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/users" element={<Users />} />
+        <Route path="/payments" element={<Payments />} />
+        <Route path="/programs" element={<Programs />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/medias" element={<Medias />} />
+        <Route path="/contributions" element={<Contributions />} />
+        <Route path="/livestreams" element={<LiveStreams />} />
+      </Route>
+    </Route>
   </Routes>
 );
 
