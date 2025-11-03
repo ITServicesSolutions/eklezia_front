@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import logo from '../assets/images/logo.jpeg';
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -13,6 +14,9 @@ const Navbar: React.FC = () => {
     <header className="flex items-center justify-between p-4 bg-white shadow-md dark:bg-gray-800">
       <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Dashboard</h2>
+        <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-white dark:border-gray-700 bg-white">
+          <img src={logo} alt="logo de l'église" className="h-full w-full object-cover" />
+        </div>
       </div>
       <div>
         <button
