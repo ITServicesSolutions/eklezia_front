@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { getUsers } from '../api/users';
 
+// Interface pour le rôle, correspondant à la nouvelle réponse de l'API
 interface Role {
   id: number;
   name: string;
 }
 
+// Interface pour l'utilisateur mise à jour
 interface User {
   id: number;
   email: string;
-  full_name: string;
-  role: Role;
+  name: string; // Utilisation de 'name' pour correspondre au backend
+  role: Role;   // Attente d'un objet Role complet
 }
 
 const Users: React.FC = () => {
@@ -78,8 +80,9 @@ const Users: React.FC = () => {
             {users.map((user) => (
               <tr key={user.id}>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{user.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.full_name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.email}</td>
+                {/* Affichage du nom du rôle */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.role.name}</td>
               </tr>
             ))}
