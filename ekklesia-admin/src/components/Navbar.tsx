@@ -5,6 +5,9 @@ import { getUsersMe } from '../api/users';
 
 interface User {
   email: string;
+  role: {
+    name: string;
+  };
   // Add other user properties here as needed
 }
 
@@ -43,7 +46,12 @@ const Navbar: React.FC = () => {
         </div>
       </div>
       <div className="flex items-center">
-        {user && <span className="text-gray-900 dark:text-white mr-4">{user.email}</span>}
+        {user && (
+          <div className="mr-4">
+            <span className="text-gray-900 dark:text-white">{user.email}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 block">{user.role.name}</span>
+          </div>
+        )}
         <button
           onClick={handleLogout}
           className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
