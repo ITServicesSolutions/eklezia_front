@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, DollarSign, Calendar, Clapperboard, Film, HandHeart, Radio } from 'lucide-react';
+import { Home, Users, Calendar, Clapperboard, Film, HandHeart, Radio } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
   const navItems = [
     { to: '/', icon: <Home size={20} />, label: 'Dashboard' },
     { to: '/users', icon: <Users size={20} />, label: 'Users' },
-    { to: '/payments', icon: <DollarSign size={20} />, label: 'Payments' },
+    // { to: '/payments', icon: <DollarSign size={20} />, label: 'Payments' },
     { to: '/programs', icon: <Calendar size={20} />, label: 'Programs' },
     { to: '/events', icon: <Clapperboard size={20} />, label: 'Events' },
     { to: '/medias', icon: <Film size={20} />, label: 'Medias' },
