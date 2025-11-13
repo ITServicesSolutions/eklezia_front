@@ -20,6 +20,7 @@ const Medias: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [eventId, setEventId] = useState<number>(0);
   const [file, setFile] = useState<File | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   const [showForm, setShowForm] = useState(false);
 
   const fetchMedias = async () => {
@@ -43,7 +44,7 @@ const Medias: React.FC = () => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce média ?')) {
       return;
     }
-    
+
     try {
       await deleteMedia(id);
       setMedias(medias.filter(media => media.id !== id));
@@ -67,9 +68,10 @@ const Medias: React.FC = () => {
     }
 
     try {
-      await createMedia(eventId, file);
+      await createMedia(eventId, file, mediaType);
       setEventId(0);
       setFile(null);
+      setMediaType('image');
       setShowForm(false);
       setError(null);
       fetchMedias(); // Actualiser la liste
@@ -111,25 +113,40 @@ const Medias: React.FC = () => {
               <label htmlFor="event_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                 ID de l'événement *
               </label>
-              <input 
-                type="number" 
-                id="event_id" 
-                value={eventId} 
-                onChange={(e) => setEventId(parseInt(e.target.value))} 
+              <input
+                type="number"
+                id="event_id"
+                value={eventId}
+                onChange={(e) => setEventId(parseInt(e.target.value))}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="1" 
-                required 
+                placeholder="1"
+                required
               />
+            </div>
+            <div>
+              <label htmlFor="media_type" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Type de média *
+              </label>
+              <select
+                id="media_type"
+                value={mediaType}
+                onChange={(e) => setMediaType(e.target.value as 'image' | 'video')}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              >
+                <option value="image">Image</option>
+                <option value="video">Vidéo</option>
+              </select>
             </div>
             <div>
               <label htmlFor="file_input" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                 Fichier *
               </label>
-              <input 
-                onChange={handleFileChange} 
-                className="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" 
-                id="file_input" 
-                type="file" 
+              <input
+                onChange={handleFileChange}
+                className="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                id="file_input"
+                type="file"
                 required
               />
             </div>
@@ -153,9 +170,9 @@ const Medias: React.FC = () => {
             <div key={media.id} className="bg-white rounded-lg shadow-md dark:bg-gray-800 overflow-hidden border border-gray-200 dark:border-gray-700 transition-transform hover:scale-105">
               <div className="h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
                 {media.type === 'image' ? (
-                  <img 
-                    src={media.file_path} 
-                    alt={media.title || 'Media'} 
+                  <img
+                    src={media.file_path}
+                    alt={media.title || 'Media'}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Image+Non+Disponible';
@@ -179,9 +196,9 @@ const Medias: React.FC = () => {
                   Événement: {media.event_id}
                 </p>
                 <div className="mt-4 flex justify-end space-x-2">
-                  <a 
-                    href={media.file_path} 
-                    target="_blank" 
+                  <a
+                    href={media.file_path}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-md hover:bg-blue-200"
                   >

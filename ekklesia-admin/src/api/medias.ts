@@ -10,14 +10,14 @@ export const getMedias = async (): Promise<any[]> => {
   }
 };
 
-export const createMedia = async (eventId: number, file: File, title?: string, type?: string): Promise<any> => {
+export const createMedia = async (eventId: number, file: File, type: 'image' | 'video', title?: string): Promise<any> => {
   const formData = new FormData();
   formData.append('event_id', eventId.toString());
   formData.append('file', file);
-  
-  // Ajouter les champs optionnels s'ils sont fournis
+  formData.append('type', type);
+
+  // Ajouter le champ optionnel s'il est fourni
   if (title) formData.append('title', title);
-  if (type) formData.append('type', type);
 
   try {
     const response = await axiosInstance.post('/api/v1/medias/', formData, {
