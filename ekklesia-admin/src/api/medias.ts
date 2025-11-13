@@ -1,13 +1,8 @@
 import axiosInstance from './axiosInstance';
 
-export interface Media {
-  id: number;
-  title: string;
-  type: string;
-  url: string;
-}
+// Les interfaces ont été déplacées vers Medias.tsx
 
-export const getMedias = async (): Promise<Media[]> => {
+export const getMedias = async (): Promise<any[]> => {
   try {
     const response = await axiosInstance.get('/api/v1/medias');
     return response.data;
@@ -17,7 +12,7 @@ export const getMedias = async (): Promise<Media[]> => {
   }
 };
 
-export const createMedia = async (data: Omit<Media, 'id'>): Promise<Media> => {
+export const createMedia = async (data: any): Promise<any> => {
   try {
     const response = await axiosInstance.post('/api/v1/medias', data);
     return response.data;

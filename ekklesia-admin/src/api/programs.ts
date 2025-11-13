@@ -1,14 +1,8 @@
 import axiosInstance from './axiosInstance';
 
-export interface Program {
-  id: number;
-  name: string;
-  description: string;
-  day: string;
-  time: string;
-}
+// Les interfaces ont été déplacées vers Programs.tsx
 
-export const getPrograms = async (): Promise<Program[]> => {
+export const getPrograms = async (): Promise<any[]> => {
   try {
     const response = await axiosInstance.get('/api/v1/programs');
     return response.data;
@@ -18,7 +12,7 @@ export const getPrograms = async (): Promise<Program[]> => {
   }
 };
 
-export const createProgram = async (data: Omit<Program, 'id'>): Promise<Program> => {
+export const createProgram = async (data: any): Promise<any> => {
   try {
     const response = await axiosInstance.post('/api/v1/programs', data);
     return response.data;

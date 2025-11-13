@@ -1,13 +1,8 @@
 import axiosInstance from './axiosInstance';
 
-export interface Event {
-  id: number;
-  name: string;
-  description: string;
-  date: string;
-}
+// Les interfaces ont été déplacées vers Events.tsx
 
-export const getEvents = async (): Promise<Event[]> => {
+export const getEvents = async (): Promise<any[]> => {
   try {
     const response = await axiosInstance.get('/api/v1/events');
     return response.data;
@@ -17,7 +12,7 @@ export const getEvents = async (): Promise<Event[]> => {
   }
 };
 
-export const createEvent = async (data: Omit<Event, 'id'>): Promise<Event> => {
+export const createEvent = async (data: any): Promise<any> => {
   try {
     const response = await axiosInstance.post('/api/v1/events', data);
     return response.data;

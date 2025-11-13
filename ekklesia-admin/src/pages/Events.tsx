@@ -1,86 +1,220 @@
 import React, { useState, useEffect } from 'react';
-import { getEvents, createEvent, deleteEvent, Event } from '../api/events';
+import { getEvents, createEvent, deleteEvent } from '../api/events';
+
+export interface Event {
+  id: number;
+  name: string;
+  description: string;
+  date: string;
+}
+
+export interface CreateEventData {
+  name: string;
+  description: string;
+  date: string;
+}
 
 const Events: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // State pour le formulaire d'ajout
+  const [newEvent, setNewEvent] = useState<CreateEventData>({
+    name: '',
+    description: '',
+    date: new Date().toISOString().slice(0, 10)
+  });
+  const [showForm, setShowForm] = useState(false);
+
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const data = await getEvents();
+      setEvents(data);
+    } catch (error) {
+      console.error('Failed to fetch events', error);
+      setError('Erreur lors du chargement des événements');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const data = await getEvents();
-        setEvents(data);
-      } catch (error) {
-        console.error('Failed to fetch events', error);
-      }
-    };
-
     fetchEvents();
   }, []);
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
+      return;
+    }
+    
     try {
       await deleteEvent(id);
       setEvents(events.filter(event => event.id !== id));
     } catch (error) {
       console.error('Failed to delete event', error);
+      setError('Erreur lors de la suppression de l\'événement');
     }
   };
 
-  const handleAdd = async () => {
-    const newEventData = {
-      name: `Nouvel Événement ${events.length + 1}`,
-      description: 'Description à venir',
-      date: new Date().toISOString().slice(0, 10),
-    };
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newEvent.name.trim()) {
+      setError('Le nom de l\'événement est requis');
+      return;
+    }
+
     try {
-      const newEvent = await createEvent(newEventData);
-      setEvents([...events, newEvent]);
+      const createdEvent = await createEvent(newEvent);
+      setEvents([...events, createdEvent]);
+      setNewEvent({
+        name: '',
+        description: '',
+        date: new Date().toISOString().slice(0, 10)
+      });
+      setShowForm(false);
+      setError(null);
     } catch (error) {
       console.error('Failed to add event', error);
+      setError('Erreur lors de l\'ajout de l\'événement');
     }
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewEvent(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center p-8">Chargement...</div>;
+  }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Événements</h3>
         <button
-          onClick={handleAdd}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          onClick={() => setShowForm(!showForm)}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
         >
-          Ajouter un événement
+          {showForm ? 'Annuler' : 'Ajouter un événement'}
         </button>
       </div>
 
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
+      {showForm && (
+        <div className="mb-6 p-4 bg-white rounded-lg shadow-md dark:bg-gray-800">
+          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+            Nouvel Événement
+          </h4>
+          <form onSubmit={handleAdd} className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Nom de l'événement *
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={newEvent.name}
+                onChange={handleInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Description
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={newEvent.description}
+                onChange={handleInputChange}
+                rows={3}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Date *
+              </label>
+              <input
+                type="date"
+                id="date"
+                name="date"
+                value={newEvent.date}
+                onChange={handleInputChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                required
+              />
+            </div>
+            
+            <button
+              type="submit"
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            >
+              Créer l'événement
+            </button>
+          </form>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-md dark:bg-gray-800 overflow-x-auto">
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-            <tr>
-              <th scope="col" className="px-6 py-3">Nom de l'événement</th>
-              <th scope="col" className="px-6 py-3">Date</th>
-              <th scope="col" className="px-6 py-3">Description</th>
-              <th scope="col" className="px-6 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr key={event.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{event.name}</td>
-                <td className="px-6 py-4">{event.date}</td>
-                <td className="px-6 py-4">{event.description}</td>
-                <td className="px-6 py-4 text-right">
-                  <button className="font-medium text-indigo-600 dark:text-indigo-500 hover:underline">Modifier</button>
-                  <button
-                    onClick={() => handleDelete(event.id)}
-                    className="font-medium text-red-600 dark:text-red-500 hover:underline ml-4"
-                  >
-                    Supprimer
-                  </button>
-                </td>
+        {events.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            Aucun événement trouvé
+          </div>
+        ) : (
+          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+              <tr>
+                <th scope="col" className="px-6 py-3">Nom de l'événement</th>
+                <th scope="col" className="px-6 py-3">Date</th>
+                <th scope="col" className="px-6 py-3">Description</th>
+                <th scope="col" className="px-6 py-3 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {events.map((event) => (
+                <tr key={event.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                  <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                    {event.name}
+                  </td>
+                  <td className="px-6 py-4">
+                    {new Date(event.date).toLocaleDateString('fr-FR')}
+                  </td>
+                  <td className="px-6 py-4">
+                    {event.description || 'Aucune description'}
+                  </td>
+                  <td className="px-6 py-4 text-right space-x-2">
+                    <button className="font-medium text-indigo-600 dark:text-indigo-500 hover:underline">
+                      Modifier
+                    </button>
+                    <button
+                      onClick={() => handleDelete(event.id)}
+                      className="font-medium text-red-600 dark:text-red-500 hover:underline"
+                    >
+                      Supprimer
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
