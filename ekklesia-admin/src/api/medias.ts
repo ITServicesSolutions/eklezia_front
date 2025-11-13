@@ -10,9 +10,21 @@ export const getMedias = async (): Promise<any[]> => {
   }
 };
 
-export const createMedia = async (data: any): Promise<any> => {
+export const createMedia = async (eventId: number, file: File, title?: string, type?: string): Promise<any> => {
+  const formData = new FormData();
+  formData.append('event_id', eventId.toString());
+  formData.append('file', file);
+  
+  // Ajouter les champs optionnels s'ils sont fournis
+  if (title) formData.append('title', title);
+  if (type) formData.append('type', type);
+
   try {
-    const response = await axiosInstance.post('/api/v1/medias', data);
+    const response = await axiosInstance.post('/api/v1/medias/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   } catch (error) {
     console.error('Error creating media:', error);

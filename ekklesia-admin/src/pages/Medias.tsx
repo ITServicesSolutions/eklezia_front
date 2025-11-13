@@ -14,23 +14,12 @@ export interface Media {
   updated_at: string;
 }
 
-export interface CreateMediaData {
-  title: string;
-  type: 'image' | 'video';
-  url: string;
-}
-
 const Medias: React.FC = () => {
   const [medias, setMedias] = useState<Media[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // State pour le formulaire d'ajout
-  const [newMedia, setNewMedia] = useState<CreateMediaData>({
-    title: '',
-    type: 'image',
-    url: ''
-  });
+  const [eventId, setEventId] = useState<number>(0);
+  const [file, setFile] = useState<File | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   const fetchMedias = async () => {
@@ -64,36 +53,30 @@ const Medias: React.FC = () => {
     }
   };
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFile(e.target.files[0]);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newMedia.title.trim() || !newMedia.url.trim()) {
-      setError('Le titre et l\'URL sont requis');
+    if (!file || !eventId) {
+      setError('Veuillez fournir un ID d\'événement et un fichier.');
       return;
     }
 
     try {
-      const createdMedia = await createMedia(newMedia);
-      setMedias([...medias, createdMedia]);
-      setNewMedia({
-        title: '',
-        type: 'image',
-        url: ''
-      });
+      await createMedia(eventId, file);
+      setEventId(0);
+      setFile(null);
       setShowForm(false);
       setError(null);
+      fetchMedias(); // Actualiser la liste
     } catch (error) {
-      console.error('Failed to add media', error);
+      console.error('Failed to create media', error);
       setError('Erreur lors de l\'ajout du média');
     }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewMedia(prev => ({
-      ...prev,
-      [name]: value
-    }));
   };
 
   if (loading) {
@@ -121,62 +104,40 @@ const Medias: React.FC = () => {
       {showForm && (
         <div className="mb-6 p-4 bg-white rounded-lg shadow-md dark:bg-gray-800">
           <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-            Nouveau Média
+            Uploader un média
           </h4>
-          <form onSubmit={handleAdd} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Titre *
+              <label htmlFor="event_id" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                ID de l'événement *
               </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={newMedia.title}
-                onChange={handleInputChange}
+              <input 
+                type="number" 
+                id="event_id" 
+                value={eventId} 
+                onChange={(e) => setEventId(parseInt(e.target.value))} 
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="1" 
+                required 
+              />
+            </div>
+            <div>
+              <label htmlFor="file_input" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Fichier *
+              </label>
+              <input 
+                onChange={handleFileChange} 
+                className="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" 
+                id="file_input" 
+                type="file" 
                 required
               />
             </div>
-            
-            <div>
-              <label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Type *
-              </label>
-              <select
-                id="type"
-                name="type"
-                value={newMedia.type}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-              >
-                <option value="image">Image</option>
-                <option value="video">Vidéo</option>
-              </select>
-            </div>
-            
-            <div>
-              <label htmlFor="url" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                URL *
-              </label>
-              <input
-                type="url"
-                id="url"
-                name="url"
-                value={newMedia.url}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                placeholder="https://example.com/image.jpg"
-                required
-              />
-            </div>
-            
             <button
               type="submit"
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
             >
-              Ajouter le média
+              Uploader le média
             </button>
           </form>
         </div>
@@ -193,8 +154,8 @@ const Medias: React.FC = () => {
               <div className="h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
                 {media.type === 'image' ? (
                   <img 
-                    src={media.url || media.file_path} 
-                    alt={media.title} 
+                    src={media.file_path} 
+                    alt={media.title || 'Media'} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Image+Non+Disponible';
@@ -210,11 +171,16 @@ const Medias: React.FC = () => {
                 )}
               </div>
               <div className="p-4">
-                <h5 className="text-lg font-bold text-gray-900 dark:text-white truncate">{media.title}</h5>
+                <h5 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                  {media.title || `Media ${media.id}`}
+                </h5>
                 <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{media.type}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  Événement: {media.event_id}
+                </p>
                 <div className="mt-4 flex justify-end space-x-2">
                   <a 
-                    href={media.url || media.file_path} 
+                    href={media.file_path} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-md hover:bg-blue-200"
