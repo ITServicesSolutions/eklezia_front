@@ -4,13 +4,19 @@ import { getMedias, createMedia, deleteMedia } from '../api/medias';
 export interface Media {
   id: number;
   title: string;
-  type: string;
+  type: 'image' | 'video';
   url: string;
+  file_path: string;
+  event_id: number;
+  delete_user_id?: number | null;
+  delete_date?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CreateMediaData {
   title: string;
-  type: string;
+  type: 'image' | 'video';
   url: string;
 }
 
@@ -147,8 +153,6 @@ const Medias: React.FC = () => {
               >
                 <option value="image">Image</option>
                 <option value="video">Vidéo</option>
-                <option value="audio">Audio</option>
-                <option value="document">Document</option>
               </select>
             </div>
             
@@ -189,32 +193,18 @@ const Medias: React.FC = () => {
               <div className="h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
                 {media.type === 'image' ? (
                   <img 
-                    src={media.url} 
+                    src={media.url || media.file_path} 
                     alt={media.title} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Image+Non+Disponible';
                     }}
                   />
-                ) : media.type === 'video' ? (
+                ) : (
                   <div className="flex items-center justify-center w-full h-full bg-gray-300 dark:bg-gray-600">
                     <div className="text-center">
                       <div className="text-4xl mb-2">🎥</div>
                       <p className="text-sm">Vidéo</p>
-                    </div>
-                  </div>
-                ) : media.type === 'audio' ? (
-                  <div className="flex items-center justify-center w-full h-full bg-gray-300 dark:bg-gray-600">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">🎵</div>
-                      <p className="text-sm">Audio</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center w-full h-full bg-gray-300 dark:bg-gray-600">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">📄</div>
-                      <p className="text-sm">Document</p>
                     </div>
                   </div>
                 )}
@@ -224,7 +214,7 @@ const Medias: React.FC = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{media.type}</p>
                 <div className="mt-4 flex justify-end space-x-2">
                   <a 
-                    href={media.url} 
+                    href={media.url || media.file_path} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-md hover:bg-blue-200"

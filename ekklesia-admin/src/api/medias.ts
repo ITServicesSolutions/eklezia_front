@@ -1,7 +1,5 @@
 import axiosInstance from './axiosInstance';
 
-// Les interfaces ont été déplacées vers Medias.tsx
-
 export const getMedias = async (): Promise<any[]> => {
   try {
     const response = await axiosInstance.get('/api/v1/medias');
