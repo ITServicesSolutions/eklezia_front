@@ -1,42 +1,44 @@
-import React, { useState } from 'react';
-
-// Données initiales factices
-const initialProgramsData = [
-  {
-    id: 1,
-    title: 'Culte du Dimanche',
-    host: 'Pasteur John Doe',
-    schedule: 'Dimanche, 10:00 - 12:00',
-  },
-  {
-    id: 2,
-    title: 'Étude Biblique',
-    host: 'Ancien Pierre',
-    schedule: 'Mercredi, 19:00 - 20:30',
-  },
-  {
-    id: 3,
-    title: 'Prière du Matin',
-    host: 'Diacre Jacques',
-    schedule: 'Lundi au Vendredi, 06:00 - 07:00',
-  },
-];
+import React, { useState, useEffect } from 'react';
+import { getPrograms, createProgram, deleteProgram, Program } from '../api/programs';
 
 const Programs: React.FC = () => {
-  const [programs, setPrograms] = useState(initialProgramsData);
+  const [programs, setPrograms] = useState<Program[]>([]);
 
-  const handleDelete = (id: number) => {
-    setPrograms(programs.filter(program => program.id !== id));
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      try {
+        const data = await getPrograms();
+        setPrograms(data);
+      } catch (error) {
+        console.error('Failed to fetch programs', error);
+      }
+    };
+
+    fetchPrograms();
+  }, []);
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteProgram(id);
+      setPrograms(programs.filter(program => program.id !== id));
+    } catch (error) {
+      console.error('Failed to delete program', error);
+    }
   };
 
-  const handleAdd = () => {
-    const newProgram = {
-      id: Date.now(),
-      title: `Nouveau Programme ${programs.length + 1}`,
-      host: 'À annoncer',
-      schedule: 'À déterminer',
+  const handleAdd = async () => {
+    const newProgramData = {
+      name: `Nouveau Programme ${programs.length + 1}`,
+      description: 'Description à venir',
+      day: 'À déterminer',
+      time: 'À déterminer',
     };
-    setPrograms([...programs, newProgram]);
+    try {
+      const newProgram = await createProgram(newProgramData);
+      setPrograms([...programs, newProgram]);
+    } catch (error) {
+      console.error('Failed to add program', error);
+    }
   };
 
   return (
@@ -56,17 +58,19 @@ const Programs: React.FC = () => {
           <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
             <tr>
               <th scope="col" className="px-6 py-3">Titre du Programme</th>
-              <th scope="col" className="px-6 py-3">Animateur</th>
-              <th scope="col" className="px-6 py-3">Horaire</th>
+              <th scope="col" className="px-6 py-3">Description</th>
+              <th scope="col" className="px-6 py-3">Jour</th>
+              <th scope="col" className="px-6 py-3">Heure</th>
               <th scope="col" className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {programs.map((program) => (
               <tr key={program.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{program.title}</td>
-                <td className="px-6 py-4">{program.host}</td>
-                <td className="px-6 py-4">{program.schedule}</td>
+                <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{program.name}</td>
+                <td className="px-6 py-4">{program.description}</td>
+                <td className="px-6 py-4">{program.day}</td>
+                <td className="px-6 py-4">{program.time}</td>
                 <td className="px-6 py-4 text-right">
                   <button className="font-medium text-indigo-600 dark:text-indigo-500 hover:underline">Modifier</button>
                   <button

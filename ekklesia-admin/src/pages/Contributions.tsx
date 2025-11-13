@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { getContributions, createContribution } from '../api/contributions';
+import React, { useEffect, useState, useMemo } from 'react';
+import { getContributions } from '../api/contributions';
 
 export interface Contribution {
   id: number;
@@ -15,25 +15,12 @@ export interface Contribution {
   delete_date?: string;
 }
 
-export interface CreateContributionData {
-  user_id: number;
-  type: 'don' | 'offrande' | 'dime';
-  amount: number;
-  payment_method_id: number;
-  transaction_id: string;
-  status: 'pending' | 'completed' | 'failed';
-}
-
 const Contributions: React.FC = () => {
   const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Form state
-  const [type, setType] = useState<'don' | 'offrande' | 'dime'>('don');
-  const [amount, setAmount] = useState(0);
-  const [paymentMethodId, setPaymentMethodId] = useState(0);
-  const [userId, setUserId] = useState(0); // Ajout d'un champ pour user_id
+  const [sortType, setSortType] = useState('');
+  const [sortDate, setSortDate] = useState('');
 
   const fetchContributions = async () => {
     try {
@@ -52,37 +39,22 @@ const Contributions: React.FC = () => {
     fetchContributions();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (userId === 0 || paymentMethodId === 0 || amount <= 0) {
-      setError('Please fill all required fields with valid values');
-      return;
+  const sortedContributions = useMemo(() => {
+    let sorted = [...contributions];
+    if (sortType) {
+      sorted = sorted.filter(c => c.type === sortType);
     }
+    if (sortDate === 'asc') {
+      sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    } else if (sortDate === 'desc') {
+      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+    return sorted;
+  }, [contributions, sortType, sortDate]);
 
-    const newContribution: CreateContributionData = {
-      user_id: userId,
-      type,
-      amount,
-      payment_method_id: paymentMethodId,
-      transaction_id: `txn_${Date.now()}`,
-      status: 'pending',
-    };
-    
-    try {
-      await createContribution(newContribution);
-      // Reset form
-      setUserId(0);
-      setAmount(0);
-      setPaymentMethodId(0);
-      setType('don');
-      setError(null);
-      fetchContributions(); // Refetch contributions after creating a new one
-    } catch (err) {
-      setError('Failed to create contribution');
-      console.error(err);
-    }
+  const handleReset = () => {
+    setSortType('');
+    setSortDate('');
   };
 
   if (loading) {
@@ -99,73 +71,44 @@ const Contributions: React.FC = () => {
         </div>
       )}
 
-      <div className="mb-4">
-        <form onSubmit={handleSubmit} className="p-4 bg-white rounded-lg shadow-md dark:bg-gray-800">
-          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Add Contribution</h4>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <div>
-              <label htmlFor="userId" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                User ID *
-              </label>
-              <input
-                type="number"
-                id="userId"
-                value={userId}
-                onChange={(e) => setUserId(Number(e.target.value))}
-                className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-                min="1"
-              />
-            </div>
-            <div>
-              <label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Type *
-              </label>
-              <select
-                id="type"
-                value={type}
-                onChange={(e) => setType(e.target.value as 'don' | 'offrande' | 'dime')}
-                className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="don">Don</option>
-                <option value="offrande">Offrande</option>
-                <option value="dime">Dime</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Amount *
-              </label>
-              <input
-                type="number"
-                id="amount"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-                min="0.01"
-                step="0.01"
-              />
-            </div>
-            <div>
-              <label htmlFor="paymentMethodId" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Payment Method ID *
-              </label>
-              <input
-                type="number"
-                id="paymentMethodId"
-                value={paymentMethodId}
-                onChange={(e) => setPaymentMethodId(Number(e.target.value))}
-                className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-                min="1"
-              />
-            </div>
-          </div>
-          <div className="mt-4">
-            <button type="submit" className="px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Add</button>
-          </div>
-        </form>
+      <div className="flex justify-end items-center mb-4 space-x-4">
+        <div>
+          <label htmlFor="type-sort" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            Trier par type :
+          </label>
+          <select
+            id="type-sort"
+            value={sortType}
+            onChange={(e) => setSortType(e.target.value)}
+            className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          >
+            <option value="">Par défaut</option>
+            <option value="don">Don</option>
+            <option value="offrande">Offrande</option>
+            <option value="dime">Dîme</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="date-sort" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            Trier par date :
+          </label>
+          <select
+            id="date-sort"
+            value={sortDate}
+            onChange={(e) => setSortDate(e.target.value)}
+            className="block w-full mt-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          >
+            <option value="">Par défaut</option>
+            <option value="asc">Plus ancienne</option>
+            <option value="desc">Plus récente</option>
+          </select>
+        </div>
+        <button
+          onClick={handleReset}
+          className="px-4 py-2 mt-5 text-sm font-medium text-white bg-gray-600 rounded-md hover:bg-gray-700"
+        >
+          Réinitialiser
+        </button>
       </div>
 
       <div className="overflow-x-auto">
@@ -180,7 +123,7 @@ const Contributions: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {contributions.map((contribution) => (
+            {sortedContributions.map((contribution) => (
               <tr key={contribution.id}>
                 <td className="py-2 px-4 border-b dark:border-gray-700">{contribution.type}</td>
                 <td className="py-2 px-4 border-b dark:border-gray-700">{contribution.amount}</td>

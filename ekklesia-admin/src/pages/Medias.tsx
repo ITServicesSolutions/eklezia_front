@@ -1,60 +1,43 @@
-import React, { useState } from 'react';
-
-// Données initiales factices
-const initialMediasData = [
-  {
-    id: 1,
-    title: 'Média 1',
-    imageUrl: 'https://via.placeholder.com/300',
-    type: 'vidéo',
-  },
-  {
-    id: 2,
-    title: 'Média 2',
-    imageUrl: 'https://via.placeholder.com/300',
-    type: 'image',
-  },
-  {
-    id: 3,
-    title: 'Média 3',
-    imageUrl: 'https://via.placeholder.com/300',
-    type: 'audio',
-  },
-  {
-    id: 4,
-    title: 'Média 4',
-    imageUrl: 'https://via.placeholder.com/300',
-    type: 'vidéo',
-  },
-   {
-    id: 5,
-    title: 'Média 5',
-    imageUrl: 'https://via.placeholder.com/300',
-    type: 'vidéo',
-  },
-  {
-    id: 6,
-    title: 'Média 6',
-    imageUrl: 'https://via.placeholder.com/300',
-    type: 'image',
-  },
-];
+import React, { useState, useEffect } from 'react';
+import { getMedias, createMedia, deleteMedia, Media } from '../api/medias';
 
 const Medias: React.FC = () => {
-  const [medias, setMedias] = useState(initialMediasData);
+  const [medias, setMedias] = useState<Media[]>([]);
 
-  const handleDelete = (id: number) => {
-    setMedias(medias.filter(media => media.id !== id));
+  useEffect(() => {
+    const fetchMedias = async () => {
+      try {
+        const data = await getMedias();
+        setMedias(data);
+      } catch (error) {
+        console.error('Failed to fetch medias', error);
+      }
+    };
+
+    fetchMedias();
+  }, []);
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteMedia(id);
+      setMedias(medias.filter(media => media.id !== id));
+    } catch (error) {
+      console.error('Failed to delete media', error);
+    }
   };
 
-  const handleAdd = () => {
-    const newMedia = {
-      id: Date.now(), // Utilise un timestamp pour un ID unique
+  const handleAdd = async () => {
+    const newMediaData = {
       title: `Nouveau Média ${medias.length + 1}`,
-      imageUrl: 'https://via.placeholder.com/300',
+      url: 'https://via.placeholder.com/300',
       type: 'image',
     };
-    setMedias([...medias, newMedia]);
+    try {
+      const newMedia = await createMedia(newMediaData);
+      setMedias([...medias, newMedia]);
+    } catch (error) {
+      console.error('Failed to add media', error);
+    }
   };
 
   return (
@@ -71,8 +54,8 @@ const Medias: React.FC = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {medias.map((media) => (
-          <div key={media.id} className="bg-white rounded-lg shadow-md dark:bg-gray-800 overflow-hidden">
-            <img src={media.imageUrl} alt={media.title} className="w-full h-48 object-cover"/>
+          <div key={media.id} className="bg-white rounded-lg shadow-md dark:bg-gray-800 overflow-hidden border border-gray-200 dark:border-gray-700">
+            <img src={media.url} alt={media.title} className="w-full h-48 object-cover"/>
             <div className="p-4">
               <h5 className="text-lg font-bold text-gray-900 dark:text-white">{media.title}</h5>
               <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{media.type}</p>

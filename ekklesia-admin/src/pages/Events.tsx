@@ -1,42 +1,43 @@
-import React, { useState } from 'react';
-
-// Données initiales factices
-const initialEventsData = [
-  {
-    id: 1,
-    name: 'Conférence Annuelle',
-    date: '2024-12-15',
-    location: 'Grand Auditorium',
-  },
-  {
-    id: 2,
-    name: 'Séminaire Jeunesse',
-    date: '2024-11-20',
-    location: 'Salle de Conférence B',
-  },
-  {
-    id: 3,
-    name: 'Concert de Louange',
-    date: '2024-11-28',
-    location: 'Sanctuaire Principal',
-  },
-];
+import React, { useState, useEffect } from 'react';
+import { getEvents, createEvent, deleteEvent, Event } from '../api/events';
 
 const Events: React.FC = () => {
-  const [events, setEvents] = useState(initialEventsData);
+  const [events, setEvents] = useState<Event[]>([]);
 
-  const handleDelete = (id: number) => {
-    setEvents(events.filter(event => event.id !== id));
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const data = await getEvents();
+        setEvents(data);
+      } catch (error) {
+        console.error('Failed to fetch events', error);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteEvent(id);
+      setEvents(events.filter(event => event.id !== id));
+    } catch (error) {
+      console.error('Failed to delete event', error);
+    }
   };
 
-  const handleAdd = () => {
-    const newEvent = {
-      id: Date.now(),
+  const handleAdd = async () => {
+    const newEventData = {
       name: `Nouvel Événement ${events.length + 1}`,
+      description: 'Description à venir',
       date: new Date().toISOString().slice(0, 10),
-      location: 'À définir',
     };
-    setEvents([...events, newEvent]);
+    try {
+      const newEvent = await createEvent(newEventData);
+      setEvents([...events, newEvent]);
+    } catch (error) {
+      console.error('Failed to add event', error);
+    }
   };
 
   return (
@@ -57,7 +58,7 @@ const Events: React.FC = () => {
             <tr>
               <th scope="col" className="px-6 py-3">Nom de l'événement</th>
               <th scope="col" className="px-6 py-3">Date</th>
-              <th scope="col" className="px-6 py-3">Lieu</th>
+              <th scope="col" className="px-6 py-3">Description</th>
               <th scope="col" className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -66,7 +67,7 @@ const Events: React.FC = () => {
               <tr key={event.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                 <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">{event.name}</td>
                 <td className="px-6 py-4">{event.date}</td>
-                <td className="px-6 py-4">{event.location}</td>
+                <td className="px-6 py-4">{event.description}</td>
                 <td className="px-6 py-4 text-right">
                   <button className="font-medium text-indigo-600 dark:text-indigo-500 hover:underline">Modifier</button>
                   <button
