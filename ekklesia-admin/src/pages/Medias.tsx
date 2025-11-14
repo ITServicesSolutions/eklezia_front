@@ -22,6 +22,7 @@ const Medias: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
   const [showForm, setShowForm] = useState(false);
+  const backendUrl = 'http://localhost:8000';
 
   const fetchMedias = async () => {
     try {
@@ -171,7 +172,7 @@ const Medias: React.FC = () => {
               <div className="h-48 bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
                 {media.type === 'image' ? (
                   <img
-                    src={media.file_path}
+                    src={`${backendUrl}${media.file_path}`}
                     alt={media.title || 'Media'}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -197,7 +198,7 @@ const Medias: React.FC = () => {
                 </p>
                 <div className="mt-4 flex justify-end space-x-2">
                   <a
-                    href={media.file_path}
+                    href={`${backendUrl}${media.file_path}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3 py-1 text-sm font-medium text-blue-600 bg-blue-100 rounded-md hover:bg-blue-200"
