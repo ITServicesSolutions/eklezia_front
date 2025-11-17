@@ -22,11 +22,11 @@ export const createProgram = async (data: any): Promise<any> => {
   }
 };
 
-export const deleteProgram = async (id: number): Promise<void> => {
-  try {
-    await axiosInstance.delete(`/api/v1/programs/${id}`);
-  } catch (error) {
-    console.error('Error deleting program:', error);
-    throw error;
-  }
-};
+// export const deleteProgram = async (id: number): Promise<void> => {
+//   try {
+//     await axiosInstance.delete(`/api/v1/programs/${id}`);
+//   } catch (error) {
+//     console.error('Error deleting program:', error);
+//     throw error;
+//   }
+// };
