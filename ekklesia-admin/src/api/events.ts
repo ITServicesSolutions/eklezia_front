@@ -22,11 +22,11 @@ export const createEvent = async (data: any): Promise<any> => {
   }
 };
 
-export const deleteEvent = async (id: number): Promise<void> => {
-  try {
-    await axiosInstance.delete(`/api/v1/events/${id}`);
-  } catch (error) {
-    console.error('Error deleting event:', error);
-    throw error;
-  }
-};
+// export const deleteEvent = async (id: number): Promise<void> => {
+//   try {
+//     await axiosInstance.delete(`/api/v1/events/${id}`);
+//   } catch (error) {
+//     console.error('Error deleting event:', error);
+//     throw error;
+//   }
+// };

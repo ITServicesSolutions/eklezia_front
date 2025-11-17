@@ -1,40 +1,88 @@
 import React, { useState, useEffect } from 'react';
-import { getEvents, createEvent, deleteEvent } from '../api/events';
+import { getEvents, createEvent } from '../api/events';
 
 export interface Event {
   id: number;
-  name: string;
+  title: string;
   description: string;
-  date: string;
+  start_date: string;
+  end_date: string;
+  user_id: number;
 }
 
 export interface CreateEventData {
-  name: string;
+  title: string;
   description: string;
-  date: string;
+  start_date: string;
+  end_date: string;
 }
 
 const Events: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // State pour le formulaire d'ajout
   const [newEvent, setNewEvent] = useState<CreateEventData>({
-    name: '',
+    title: '',
     description: '',
-    date: new Date().toISOString().slice(0, 10)
+    start_date: new Date().toISOString().slice(0, 16),
+    end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
   });
   const [showForm, setShowForm] = useState(false);
+
+  // SOLUTION : Puisque le token ne contient pas le rôle, on va le déterminer par l'email
+  const getUserInfoFromToken = () => {
+    try {
+      const token = localStorage.getItem('ekklesia-token');
+      if (!token) {
+        console.log('Aucun token trouvé');
+        return { role: null, email: null };
+      }
+
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('Token payload complet:', payload);
+      
+      const email = payload.sub || payload.email;
+      
+      // DÉTERMINER LE RÔLE PAR L'EMAIL
+      let role = null;
+      if (email) {
+        // Si l'email contient "admin" ou est l'email administrateur, on considère admin
+        if (email.includes('admin') || email === 'administrateur@itss.com') {
+          role = 'admin';
+        }
+        // Vous pouvez ajouter d'autres règles ici selon vos emails
+        else if (email.includes('moderateur') || email.includes('moderator')) {
+          role = 'moderator';
+        }
+      }
+      
+      console.log('Email détecté:', email);
+      console.log('Rôle déduit:', role);
+      
+      return { role, email };
+      
+    } catch (error) {
+      console.error('Erreur décodage token:', error);
+      return { role: null, email: null };
+    }
+  };
 
   const fetchEvents = async () => {
     try {
       setLoading(true);
       const data = await getEvents();
       setEvents(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch events', error);
-      setError('Erreur lors du chargement des événements');
+      if (error.response?.status === 401) {
+        setError('Session expirée. Veuillez vous reconnecter.');
+      } else {
+        setError('Erreur lors du chargement des événements');
+      }
     } finally {
       setLoading(false);
     }
@@ -42,43 +90,69 @@ const Events: React.FC = () => {
 
   useEffect(() => {
     fetchEvents();
+    // Récupérer les infos utilisateur depuis le token
+    const userInfo = getUserInfoFromToken();
+    setUserRole(userInfo.role);
+    setUserEmail(userInfo.email);
   }, []);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
-      return;
-    }
-    
-    try {
-      await deleteEvent(id);
-      setEvents(events.filter(event => event.id !== id));
-    } catch (error) {
-      console.error('Failed to delete event', error);
-      setError('Erreur lors de la suppression de l\'événement');
-    }
+  const hasAdminOrModeratorRole = () => {
+    return userRole === 'admin' || userRole === 'moderator';
   };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newEvent.name.trim()) {
-      setError('Le nom de l\'événement est requis');
+    if (!newEvent.title.trim()) {
+      setError('Le titre de l\'événement est requis');
+      return;
+    }
+
+    // Validation des dates
+    if (!newEvent.start_date || !newEvent.end_date) {
+      setError('Les dates de début et de fin sont requises');
+      return;
+    }
+
+    if (new Date(newEvent.end_date) <= new Date(newEvent.start_date)) {
+      setError('La date de fin doit être après la date de début');
       return;
     }
 
     try {
-      const createdEvent = await createEvent(newEvent);
+      // Conversion des dates en format ISO pour l'API
+      const eventToCreate = {
+        ...newEvent,
+        start_date: new Date(newEvent.start_date).toISOString(),
+        end_date: new Date(newEvent.end_date).toISOString()
+      };
+      
+      console.log('Données envoyées:', eventToCreate);
+      
+      const createdEvent = await createEvent(eventToCreate);
       setEvents([...events, createdEvent]);
       setNewEvent({
-        name: '',
+        title: '',
         description: '',
-        date: new Date().toISOString().slice(0, 10)
+        start_date: new Date().toISOString().slice(0, 16),
+        end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
       });
       setShowForm(false);
       setError(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add event', error);
-      setError('Erreur lors de l\'ajout de l\'événement');
+      
+      if (error.response?.status === 401) {
+        setError('Session expirée. Veuillez vous reconnecter.');
+      } else if (error.response?.status === 403) {
+        setError('Vous n\'avez pas les permissions pour créer un événement');
+      } else if (error.response?.status === 422) {
+        setError('Données invalides. Vérifiez les champs du formulaire.');
+      } else if (error.response?.data?.detail) {
+        setError(`Erreur: ${error.response.data.detail}`);
+      } else {
+        setError('Erreur lors de l\'ajout de l\'événement');
+      }
     }
   };
 
@@ -90,6 +164,12 @@ const Events: React.FC = () => {
     }));
   };
 
+  // Fonction pour forcer le rechargement si token expiré
+  const handleReconnect = () => {
+    localStorage.removeItem('ekklesia-token');
+    window.location.href = '/login';
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center p-8">Chargement...</div>;
   }
@@ -98,38 +178,76 @@ const Events: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Événements</h3>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          {showForm ? 'Annuler' : 'Ajouter un événement'}
-        </button>
+        
+        {/* Bouton conditionnel */}
+        {hasAdminOrModeratorRole() && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            {showForm ? 'Annuler' : 'Ajouter un événement'}
+          </button>
+        )}
+      </div>
+
+      {/* Message d'information sur l'utilisateur */}
+      <div className={`mb-4 p-3 rounded ${
+        userRole ? 'bg-blue-100 border border-blue-400 text-blue-700' : 'bg-yellow-100 border border-yellow-400 text-yellow-700'
+      }`}>
+        {userEmail ? (
+          <div>
+            Utilisateur: <strong>{userEmail}</strong> | 
+            Rôle: <strong>{userRole || 'Non déterminé'}</strong> | 
+            Permissions: <strong>{hasAdminOrModeratorRole() ? 'Admin/Moderator' : 'Lecture seule'}</strong>
+            {!hasAdminOrModeratorRole() && ' - Contactez un administrateur pour modifier les événements'}
+          </div>
+        ) : (
+          <div>
+            <strong>Attention:</strong> Impossible de détecter l'utilisateur. 
+            <button 
+              onClick={handleReconnect}
+              className="ml-2 px-2 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
+            >
+              Se reconnecter
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
+          {error.includes('Session expirée') && (
+            <button 
+              onClick={handleReconnect}
+              className="ml-2 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+            >
+              Se reconnecter
+            </button>
+          )}
         </div>
       )}
 
-      {showForm && (
+      {/* Formulaire conditionnel */}
+      {showForm && hasAdminOrModeratorRole() && (
         <div className="mb-6 p-4 bg-white rounded-lg shadow-md dark:bg-gray-800">
           <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
             Nouvel Événement
           </h4>
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Nom de l'événement *
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Titre de l'événement *
               </label>
               <input
                 type="text"
-                id="name"
-                name="name"
-                value={newEvent.name}
+                id="title"
+                name="title"
+                value={newEvent.title}
                 onChange={handleInputChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 required
+                maxLength={100}
               />
             </div>
             
@@ -144,30 +262,57 @@ const Events: React.FC = () => {
                 onChange={handleInputChange}
                 rows={3}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                maxLength={500}
               />
             </div>
             
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Date *
-              </label>
-              <input
-                type="date"
-                id="date"
-                name="date"
-                value={newEvent.date}
-                onChange={handleInputChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="start_date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Date et heure de début *
+                </label>
+                <input
+                  type="datetime-local"
+                  id="start_date"
+                  name="start_date"
+                  value={newEvent.start_date}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="end_date" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                  Date et heure de fin *
+                </label>
+                <input
+                  type="datetime-local"
+                  id="end_date"
+                  name="end_date"
+                  value={newEvent.end_date}
+                  onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  required
+                />
+              </div>
             </div>
             
-            <button
-              type="submit"
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-              Créer l'événement
-            </button>
+            <div className="flex space-x-3">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                Créer l'événement
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
           </form>
         </div>
       )}
@@ -181,34 +326,38 @@ const Events: React.FC = () => {
           <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
               <tr>
-                <th scope="col" className="px-6 py-3">Nom de l'événement</th>
-                <th scope="col" className="px-6 py-3">Date</th>
+                <th scope="col" className="px-6 py-3">Titre</th>
+                <th scope="col" className="px-6 py-3">Début</th>
+                <th scope="col" className="px-6 py-3">Fin</th>
                 <th scope="col" className="px-6 py-3">Description</th>
-                <th scope="col" className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {events.map((event) => (
                 <tr key={event.id} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
                   <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                    {event.name}
+                    {event.title}
                   </td>
-                  <td className="px-6 py-4">
-                    {new Date(event.date).toLocaleDateString('fr-FR')}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {new Date(event.start_date).toLocaleString('fr-FR', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {new Date(event.end_date).toLocaleString('fr-FR', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </td>
                   <td className="px-6 py-4">
                     {event.description || 'Aucune description'}
-                  </td>
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button className="font-medium text-indigo-600 dark:text-indigo-500 hover:underline">
-                      Modifier
-                    </button>
-                    <button
-                      onClick={() => handleDelete(event.id)}
-                      className="font-medium text-red-600 dark:text-red-500 hover:underline"
-                    >
-                      Supprimer
-                    </button>
                   </td>
                 </tr>
               ))}
