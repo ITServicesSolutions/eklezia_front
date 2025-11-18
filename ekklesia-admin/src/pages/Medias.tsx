@@ -207,8 +207,21 @@ const Medias: React.FC = () => {
         {showForm && (
           <div className="mb-8 animate-fade-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="bg-gradient-to-r from-orange-600 to-red-600 p-6">
-                <h4 className="text-xl font-bold text-white flex items-center space-x-2">
+              {/* Header avec bouton de retour */}
+              <div className="bg-gradient-to-r from-orange-600 to-red-600 p-6 relative">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="absolute left-6 top-1/2 transform -translate-y-1/2 flex items-center space-x-2 text-white hover:text-gray-200 transition-colors duration-200 group"
+                >
+                  <svg className="w-6 h-6 transform transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap font-medium">
+                    Annuler
+                  </span>
+                </button>
+                
+                <h4 className="text-xl font-bold text-white text-center flex items-center justify-center space-x-2">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
@@ -283,13 +296,6 @@ const Medias: React.FC = () => {
                         <span>Uploader le média</span>
                       </>
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="px-6 py-3 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors font-medium"
-                  >
-                    Annuler
                   </button>
                 </div>
               </form>
