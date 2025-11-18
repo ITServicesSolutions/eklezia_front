@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getPrograms, createProgram } from '../api/programs';
+import { getCurrentUser, canManageContent } from '../utils/auth';
 
 export interface Program {
   id: number;
@@ -19,8 +20,7 @@ const Programs: React.FC = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,33 +29,6 @@ const Programs: React.FC = () => {
     hours_start: '08:00',
     description: ''
   });
-
-  const getUserInfoFromToken = () => {
-    try {
-      const token = localStorage.getItem('ekklesia-token');
-      if (!token) {
-        return { role: null, email: null };
-      }
-
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const email = payload.sub || payload.email;
-      
-      let role = null;
-      if (email) {
-        if (email.includes('admin') || email === 'administrateur@itss.com') {
-          role = 'admin';
-        } else if (email.includes('moderateur') || email.includes('moderator')) {
-          role = 'moderator';
-        }
-      }
-      
-      return { role, email };
-      
-    } catch (error) {
-      console.error('Erreur décodage token:', error);
-      return { role: null, email: null };
-    }
-  };
 
   const fetchPrograms = async () => {
     try {
@@ -75,15 +48,16 @@ const Programs: React.FC = () => {
   };
 
   useEffect(() => {
+    const initializeUser = async () => {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    };
+
+    initializeUser();
     fetchPrograms();
-    const userInfo = getUserInfoFromToken();
-    setUserRole(userInfo.role);
-    setUserEmail(userInfo.email);
   }, []);
 
-  const hasAdminOrModeratorRole = () => {
-    return userRole === 'admin' || userRole === 'moderator';
-  };
+  const hasManagementPermission = canManageContent(currentUser);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +120,6 @@ const Programs: React.FC = () => {
     window.location.href = '/login';
   };
 
-  // Fonction pour formater la date en français
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
@@ -157,7 +130,6 @@ const Programs: React.FC = () => {
     });
   };
 
-  // Fonction pour formater l'heure
   const formatTime = (timeString: string) => {
     return timeString.substring(0, 5);
   };
@@ -178,7 +150,6 @@ const Programs: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
             Programmes
@@ -188,18 +159,17 @@ const Programs: React.FC = () => {
           </p>
         </div>
 
-        {/* User Info Banner */}
         <div className={`mb-8 p-6 rounded-2xl backdrop-blur-sm border transition-all duration-300 ${
-          userRole 
+          currentUser 
             ? 'bg-blue-500/10 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200' 
             : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
         }`}>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <div className={`p-2 rounded-lg ${
-                userRole ? 'bg-blue-100 dark:bg-blue-900' : 'bg-amber-100 dark:bg-amber-900'
+                currentUser ? 'bg-blue-100 dark:bg-blue-900' : 'bg-amber-100 dark:bg-amber-900'
               }`}>
-                {userRole ? (
+                {currentUser ? (
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -210,12 +180,12 @@ const Programs: React.FC = () => {
                 )}
               </div>
               <div>
-                {userEmail ? (
+                {currentUser ? (
                   <div className="text-sm sm:text-base">
-                    <span className="font-semibold">{userEmail}</span> • 
-                    Rôle: <span className="font-semibold">{userRole || 'Non déterminé'}</span> • 
-                    <span className={`ml-1 ${hasAdminOrModeratorRole() ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                      {hasAdminOrModeratorRole() ? 'Permissions complètes' : 'Lecture seule'}
+                    <span className="font-semibold">{currentUser.email}</span> • 
+                    Rôle: <span className="font-semibold">{currentUser.role?.name || 'Non déterminé'}</span> • 
+                    <span className={`ml-1 ${hasManagementPermission ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                      {hasManagementPermission ? 'Permissions complètes' : 'Lecture seule'}
                     </span>
                   </div>
                 ) : (
@@ -232,7 +202,7 @@ const Programs: React.FC = () => {
               </div>
             </div>
             
-            {hasAdminOrModeratorRole() && (
+            {hasManagementPermission && (
               <button
                 onClick={() => setShowForm(!showForm)}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
@@ -246,7 +216,6 @@ const Programs: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-8 p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl backdrop-blur-sm">
             <div className="flex items-center justify-between">
@@ -270,8 +239,7 @@ const Programs: React.FC = () => {
           </div>
         )}
 
-        {/* Add Program Form */}
-        {showForm && hasAdminOrModeratorRole() && (
+        {showForm && hasManagementPermission && (
           <div className="mb-8 animate-fade-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
@@ -368,7 +336,6 @@ const Programs: React.FC = () => {
           </div>
         )}
 
-        {/* Programs Grid */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -389,7 +356,7 @@ const Programs: React.FC = () => {
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
                   Aucun programme n'est prévu pour le moment.
                 </p>
-                {hasAdminOrModeratorRole() && (
+                {hasManagementPermission && (
                   <button
                     onClick={() => setShowForm(true)}
                     className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold"
@@ -463,7 +430,6 @@ const Programs: React.FC = () => {
           )}
         </div>
 
-        {/* Stats Footer */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div>
@@ -478,7 +444,7 @@ const Programs: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {hasAdminOrModeratorRole() ? 'Actif' : 'Lecture'}
+                {hasManagementPermission ? 'Actif' : 'Lecture'}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Vos permissions</div>
             </div>

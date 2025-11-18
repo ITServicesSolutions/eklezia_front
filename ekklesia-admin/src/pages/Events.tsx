@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getEvents, createEvent } from '../api/events';
+import { getCurrentUser, canManageContent } from '../utils/auth';
 
 export interface Event {
   id: number;
@@ -17,7 +18,6 @@ export interface CreateEventData {
   end_date: string;
 }
 
-// Type pour les filtres
 type EventFilter = 'all' | 'upcoming' | 'ongoing' | 'past';
 
 const Events: React.FC = () => {
@@ -26,8 +26,7 @@ const Events: React.FC = () => {
   const [currentFilter, setCurrentFilter] = useState<EventFilter>('all');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,33 +36,6 @@ const Events: React.FC = () => {
     start_date: new Date().toISOString().slice(0, 16),
     end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
   });
-
-  const getUserInfoFromToken = () => {
-    try {
-      const token = localStorage.getItem('ekklesia-token');
-      if (!token) {
-        return { role: null, email: null };
-      }
-
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const email = payload.sub || payload.email;
-      
-      let role = null;
-      if (email) {
-        if (email.includes('admin') || email === 'administrateur@itss.com') {
-          role = 'admin';
-        } else if (email.includes('moderateur') || email.includes('moderator')) {
-          role = 'moderator';
-        }
-      }
-      
-      return { role, email };
-      
-    } catch (error) {
-      console.error('Erreur décodage token:', error);
-      return { role: null, email: null };
-    }
-  };
 
   const fetchEvents = async () => {
     try {
@@ -82,7 +54,6 @@ const Events: React.FC = () => {
     }
   };
 
-  // Fonction pour obtenir le statut de l'événement
   const getEventStatus = (startDate: string, endDate: string) => {
     const now = new Date();
     const start = new Date(startDate);
@@ -93,7 +64,6 @@ const Events: React.FC = () => {
     return 'past';
   };
 
-  // Fonction pour filtrer les événements
   const filterEvents = (filter: EventFilter) => {
     setCurrentFilter(filter);
     
@@ -121,20 +91,20 @@ const Events: React.FC = () => {
   };
 
   useEffect(() => {
+    const initializeUser = async () => {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    };
+
+    initializeUser();
     fetchEvents();
-    const userInfo = getUserInfoFromToken();
-    setUserRole(userInfo.role);
-    setUserEmail(userInfo.email);
   }, []);
 
-  // Quand les events changent, on met à jour les events filtrés
   useEffect(() => {
     filterEvents(currentFilter);
   }, [events]);
 
-  const hasAdminOrModeratorRole = () => {
-    return userRole === 'admin' || userRole === 'moderator';
-  };
+  const hasManagementPermission = canManageContent(currentUser);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,7 +175,6 @@ const Events: React.FC = () => {
     window.location.href = '/login';
   };
 
-  // Fonction pour formater la date en français
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
@@ -216,7 +185,6 @@ const Events: React.FC = () => {
     });
   };
 
-  // Fonction pour formater l'heure
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('fr-FR', {
@@ -225,7 +193,6 @@ const Events: React.FC = () => {
     });
   };
 
-  // Fonction pour obtenir la couleur du statut
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ongoing': return 'bg-green-500';
@@ -235,7 +202,6 @@ const Events: React.FC = () => {
     }
   };
 
-  // Fonction pour obtenir le texte du statut
   const getStatusText = (status: string) => {
     switch (status) {
       case 'ongoing': return 'En cours';
@@ -245,7 +211,6 @@ const Events: React.FC = () => {
     }
   };
 
-  // Fonction pour obtenir le nombre d'événements par statut
   const getEventCountByStatus = (status: EventFilter) => {
     if (status === 'all') return events.length;
     
@@ -270,7 +235,6 @@ const Events: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
             Événements
@@ -280,18 +244,17 @@ const Events: React.FC = () => {
           </p>
         </div>
 
-        {/* User Info Banner */}
         <div className={`mb-8 p-6 rounded-2xl backdrop-blur-sm border transition-all duration-300 ${
-          userRole 
+          currentUser 
             ? 'bg-purple-500/10 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200' 
             : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
         }`}>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <div className={`p-2 rounded-lg ${
-                userRole ? 'bg-purple-100 dark:bg-purple-900' : 'bg-amber-100 dark:bg-amber-900'
+                currentUser ? 'bg-purple-100 dark:bg-purple-900' : 'bg-amber-100 dark:bg-amber-900'
               }`}>
-                {userRole ? (
+                {currentUser ? (
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
@@ -302,12 +265,12 @@ const Events: React.FC = () => {
                 )}
               </div>
               <div>
-                {userEmail ? (
+                {currentUser ? (
                   <div className="text-sm sm:text-base">
-                    <span className="font-semibold">{userEmail}</span> • 
-                    Rôle: <span className="font-semibold">{userRole || 'Non déterminé'}</span> • 
-                    <span className={`ml-1 ${hasAdminOrModeratorRole() ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                      {hasAdminOrModeratorRole() ? 'Permissions complètes' : 'Lecture seule'}
+                    <span className="font-semibold">{currentUser.email}</span> • 
+                    Rôle: <span className="font-semibold">{currentUser.role?.name || 'Non déterminé'}</span> • 
+                    <span className={`ml-1 ${hasManagementPermission ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                      {hasManagementPermission ? 'Permissions complètes' : 'Lecture seule'}
                     </span>
                   </div>
                 ) : (
@@ -324,7 +287,7 @@ const Events: React.FC = () => {
               </div>
             </div>
             
-            {hasAdminOrModeratorRole() && (
+            {hasManagementPermission && (
               <button
                 onClick={() => setShowForm(!showForm)}
                 className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
@@ -338,7 +301,6 @@ const Events: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-8 p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl backdrop-blur-sm">
             <div className="flex items-center justify-between">
@@ -362,8 +324,7 @@ const Events: React.FC = () => {
           </div>
         )}
 
-        {/* Add Event Form */}
-        {showForm && hasAdminOrModeratorRole() && (
+        {showForm && hasManagementPermission && (
           <div className="mb-8 animate-fade-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6">
@@ -480,7 +441,6 @@ const Events: React.FC = () => {
           </div>
         )}
 
-        {/* Events Grid */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -491,7 +451,6 @@ const Events: React.FC = () => {
               <span className="ml-2 text-purple-600 dark:text-purple-400">({filteredEvents.length})</span>
             </h2>
             
-            {/* Filtres fonctionnels */}
             <div className="flex space-x-2">
               <button 
                 onClick={() => filterEvents('all')}
@@ -556,7 +515,7 @@ const Events: React.FC = () => {
                   {currentFilter === 'ongoing' && 'Aucun événement n\'est en cours actuellement.'}
                   {currentFilter === 'past' && 'Aucun événement passé n\'a été trouvé.'}
                 </p>
-                {hasAdminOrModeratorRole() && currentFilter === 'all' && (
+                {hasManagementPermission && currentFilter === 'all' && (
                   <button
                     onClick={() => setShowForm(true)}
                     className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 font-semibold"
@@ -584,7 +543,6 @@ const Events: React.FC = () => {
                     className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 transform hover:-translate-y-1 group"
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    {/* Status Badge */}
                     <div className="flex justify-between items-start p-6 pb-4">
                       <div className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(status)}`}>
                         {getStatusText(status)}
@@ -603,7 +561,6 @@ const Events: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Event Content */}
                     <div className="p-6 pt-0">
                       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2">
                         {event.title}
@@ -661,7 +618,6 @@ const Events: React.FC = () => {
           )}
         </div>
 
-        {/* Stats Footer */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
             <div>
@@ -682,7 +638,7 @@ const Events: React.FC = () => {
             </div>
             <div>
               <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
-                {hasAdminOrModeratorRole() ? 'Actif' : 'Lecture'}
+                {hasManagementPermission ? 'Actif' : 'Lecture'}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Vos permissions</div>
             </div>

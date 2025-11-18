@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getMedias, createMedia, deleteMedia } from '../api/medias';
+import { getCurrentUser, canManageContent } from '../utils/auth';
 
 export interface Media {
   id: number;
@@ -23,6 +24,7 @@ const Medias: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [deletingMediaId, setDeletingMediaId] = useState<number | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
   const fetchMedias = async () => {
@@ -39,8 +41,16 @@ const Medias: React.FC = () => {
   };
 
   useEffect(() => {
+    const initializeUser = async () => {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    };
+
+    initializeUser();
     fetchMedias();
   }, []);
+
+  const hasManagementPermission = canManageContent(currentUser);
 
   const handleDelete = async (id: number) => {
     try {
@@ -83,14 +93,12 @@ const Medias: React.FC = () => {
     }
   };
 
-  // Statistiques
   const stats = {
     total: medias.length,
     images: medias.filter(m => m.type === 'image').length,
     videos: medias.filter(m => m.type === 'video').length,
   };
 
-  // Fonction pour formater la date
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
       day: 'numeric',
@@ -115,7 +123,6 @@ const Medias: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 dark:from-gray-900 dark:to-gray-800 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-4">
             Médiathèque
@@ -125,7 +132,6 @@ const Medias: React.FC = () => {
           </p>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center">
@@ -164,7 +170,6 @@ const Medias: React.FC = () => {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="mb-8 p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl backdrop-blur-sm">
             <div className="flex items-center justify-between">
@@ -180,7 +185,6 @@ const Medias: React.FC = () => {
           </div>
         )}
 
-        {/* Header with Add Button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -192,22 +196,22 @@ const Medias: React.FC = () => {
             </p>
           </div>
           
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="mt-4 sm:mt-0 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>{showForm ? 'Annuler' : 'Ajouter un média'}</span>
-          </button>
+          {hasManagementPermission && (
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="mt-4 sm:mt-0 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>{showForm ? 'Annuler' : 'Ajouter un média'}</span>
+            </button>
+          )}
         </div>
 
-        {/* Upload Form */}
-        {showForm && (
+        {showForm && hasManagementPermission && (
           <div className="mb-8 animate-fade-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              {/* Header avec bouton de retour */}
               <div className="bg-gradient-to-r from-orange-600 to-red-600 p-6 relative">
                 <button
                   onClick={() => setShowForm(false)}
@@ -303,7 +307,6 @@ const Medias: React.FC = () => {
           </div>
         )}
 
-        {/* Media Grid */}
         {medias.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
             <div className="max-w-md mx-auto">
@@ -316,12 +319,14 @@ const Medias: React.FC = () => {
               <p className="text-gray-600 dark:text-gray-400 mb-6">
                 Aucun média n'a été uploadé pour le moment.
               </p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold"
-              >
-                Ajouter le premier média
-              </button>
+              {hasManagementPermission && (
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold"
+                >
+                  Ajouter le premier média
+                </button>
+              )}
             </div>
           </div>
         ) : (
@@ -335,7 +340,6 @@ const Medias: React.FC = () => {
                   key={media.id} 
                   className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 transform hover:-translate-y-1 group relative"
                 >
-                  {/* Overlay de confirmation de suppression */}
                   {isDeleting && (
                     <div className="absolute inset-0 bg-black bg-opacity-80 z-10 flex items-center justify-center rounded-2xl p-4">
                       <div className="text-center text-white">
@@ -369,7 +373,6 @@ const Medias: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Media Preview */}
                   <div className="h-48 bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden relative">
                     {media.type === 'image' ? (
                       <img
@@ -388,7 +391,6 @@ const Medias: React.FC = () => {
                       </div>
                     )}
                     
-                    {/* Type Badge */}
                     <div className="absolute top-3 left-3">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                         media.type === 'image' 
@@ -400,7 +402,6 @@ const Medias: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Media Info */}
                   <div className="p-5">
                     <h5 className="text-lg font-bold text-gray-900 dark:text-white truncate mb-2">
                       {media.title || `Media ${media.id}`}
@@ -422,7 +423,6 @@ const Medias: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div className="mt-4 flex space-x-2">
                       <a
                         href={mediaUrl}
@@ -436,15 +436,17 @@ const Medias: React.FC = () => {
                         </svg>
                         <span>Voir</span>
                       </a>
-                      <button
-                        onClick={() => setDeletingMediaId(media.id)}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        <span>Supprimer</span>
-                      </button>
+                      {hasManagementPermission && (
+                        <button
+                          onClick={() => setDeletingMediaId(media.id)}
+                          className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          <span>Supprimer</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -453,7 +455,6 @@ const Medias: React.FC = () => {
           </div>
         )}
 
-        {/* Footer Stats */}
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div>

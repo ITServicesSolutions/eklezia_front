@@ -19,3 +19,23 @@ export const getUsersMe = async () => {
     throw error;
   }
 };
+
+export const updateUserRole = async (userId: number, roleId: number) => {
+  try {
+    const response = await axiosInstance.put(`/api/v1/users/${userId}/role?role_id=${roleId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    throw error;
+  }
+};
+
+export const getRoles = async () => {
+  try {
+    const response = await axiosInstance.get('/api/v1/roles');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching roles:', error);
+    throw error;
+  }
+};
