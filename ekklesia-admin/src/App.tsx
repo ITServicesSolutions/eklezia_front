@@ -1,12 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import PrivateRoute from './routes/PrivateRoute';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
-// import Payments from './pages/Payments';
 import Programs from './pages/Programs';
 import Events from './pages/Events';
 import Medias from './pages/Medias';
@@ -28,11 +29,12 @@ const AdminLayout: React.FC = () => (
 const AppRoutes: React.FC = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
+    <Route path="/forgot-password" element={<ForgotPassword />} />
+    <Route path="/reset-password" element={<ResetPassword />} />
     <Route element={<PrivateRoute />}>
       <Route element={<AdminLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/users" element={<Users />} />
-        {/* <Route path="/payments" element={<Payments />} /> */}
         <Route path="/programs" element={<Programs />} />
         <Route path="/events" element={<Events />} />
         <Route path="/medias" element={<Medias />} />
