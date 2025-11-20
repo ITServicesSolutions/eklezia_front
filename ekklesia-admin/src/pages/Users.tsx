@@ -73,16 +73,16 @@ const Users: React.FC = () => {
     if (!currentUser) return false;
     
     // Le superadmin ne peut pas modifier son propre rôle
-    if (currentUser.role.name === 'superadmin' && currentUser.id === targetUser.id) {
-      return false;
-    }
+    // if (currentUser.role.name === 'superadmin' && currentUser.id === targetUser.id) {
+    //   return false;
+    // }
     
     // L'admin peut modifier tous les rôles sauf le sien et ceux des superadmins
     if (currentUser.role.name === 'admin') {
       // L'admin ne peut pas modifier son propre rôle
       if (currentUser.id === targetUser.id) return false;
       // L'admin ne peut pas modifier les superadmins
-      if (targetUser.role.name === 'superadmin') return false;
+      // if (targetUser.role.name === 'superadmin') return false;
       return true;
     }
     
@@ -92,7 +92,7 @@ const Users: React.FC = () => {
 
   const stats = {
     total: users.length,
-    superadmin: users.filter(user => user.role.name.toLowerCase().includes('superadmin')).length,
+    // superadmin: users.filter(user => user.role.name.toLowerCase().includes('superadmin')).length,
     admin: users.filter(user => user.role.name.toLowerCase().includes('admin') && !user.role.name.toLowerCase().includes('superadmin')).length,
     moderator: users.filter(user => user.role.name.toLowerCase().includes('moderator')).length,
     user: users.filter(user => user.role.name.toLowerCase().includes('user') && !user.role.name.toLowerCase().includes('admin')).length
@@ -100,7 +100,7 @@ const Users: React.FC = () => {
 
   const getRoleColor = (roleName: string) => {
     const role = roleName.toLowerCase();
-    if (role.includes('superadmin')) return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+    // if (role.includes('superadmin')) return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
     if (role.includes('admin')) return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
     if (role.includes('moderator')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
     if (role.includes('user')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
@@ -194,7 +194,7 @@ const Users: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center">
               <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-xl mr-4">
@@ -207,7 +207,8 @@ const Users: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+          {/* Carte Super Admin commentée */}
+          {/* <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center">
               <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-xl mr-4">
                 <span className="text-2xl">👑</span>
@@ -217,7 +218,7 @@ const Users: React.FC = () => {
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.superadmin}</p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center">
@@ -269,8 +270,9 @@ const Users: React.FC = () => {
               </div>
               <div className="mt-2 sm:mt-0">
                 <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                  <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
-                  <span>Super Admin - </span>
+                  {/* Légende pour Super Admin commentée */}
+                  {/* <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
+                  <span>Super Admin - </span> */}
                   <div className="w-3 h-3 bg-red-500 rounded-full mx-2"></div>
                   <span>Admin - </span>
                   <div className="w-3 h-3 bg-blue-500 rounded-full mx-2"></div>
@@ -385,19 +387,20 @@ const Users: React.FC = () => {
         </div>
 
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 text-center">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
             <div>
               <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                 {stats.total}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Utilisateurs totaux</div>
             </div>
-            <div>
+            {/* Statistique Super Admin commentée */}
+            {/* <div>
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {stats.superadmin}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Super Admin</div>
-            </div>
+            </div> */}
             <div>
               <div className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {stats.admin}
