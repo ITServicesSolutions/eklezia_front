@@ -1,12 +1,23 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Home, Users, Calendar, Clapperboard, Film, HandHeart, Radio } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import logo from '../assets/images/logo.jpeg';
+import { 
+  Home, 
+  Users, 
+  Calendar, 
+  Clapperboard, 
+  Film, 
+  HandHeart, 
+  Radio,
+  ChevronRight
+} from 'lucide-react';
 
 const Sidebar: React.FC = () => {
+  const location = useLocation();
+  
   const navItems = [
     { to: '/', icon: <Home size={20} />, label: 'Dashboard' },
     { to: '/users', icon: <Users size={20} />, label: 'Users' },
-    // { to: '/payments', icon: <DollarSign size={20} />, label: 'Payments' },
     { to: '/programs', icon: <Calendar size={20} />, label: 'Programs' },
     { to: '/events', icon: <Clapperboard size={20} />, label: 'Events' },
     { to: '/medias', icon: <Film size={20} />, label: 'Medias' },
@@ -15,27 +26,58 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 h-full bg-white shadow-md dark:bg-gray-800">
-      <div className="p-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Ekklesia</h1>
+    <aside className="w-80 h-full bg-gradient-to-b from-gray-900 to-gray-800 shadow-xl border-r border-gray-700">
+
+      <div className="p-9">
+        <div className="flex items-center justify-center">
+            <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-white dark:border-gray-700 bg-white shadow-md">
+              <img 
+                src={logo} 
+                alt="logo de l'église" 
+                className="h-full w-full object-cover" 
+              />
+          </div>
+        </div>
       </div>
-      <nav className="mt-4">
-        <ul>
-          {navItems.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 ${
-                    isActive ? 'bg-gray-200 dark:bg-gray-700' : ''
-                  }`
-                }
-              >
-                {item.icon}
-                <span className="ml-3">{item.label}</span>
-              </NavLink>
-            </li>
-          ))}
+
+      {/* Navigation */}
+      <nav className="p-4 mt-2">
+        <ul className="space-y-2">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.to;
+            
+            return (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  className={`
+                    flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 group
+                    ${isActive 
+                      ? 'bg-blue-500/20 text-white border-l-4 border-blue-500 shadow-lg' 
+                      : 'text-gray-300 hover:bg-gray-750 hover:text-white hover:translate-x-1'
+                    }
+                  `}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`
+                      transition-colors duration-200
+                      ${isActive ? 'text-blue-400' : 'text-gray-400 group-hover:text-white'}
+                    `}>
+                      {item.icon}
+                    </div>
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                  
+                  {isActive && (
+                    <ChevronRight 
+                      size={16} 
+                      className="text-blue-400 animate-pulse" 
+                    />
+                  )}
+                </NavLink>
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </aside>
