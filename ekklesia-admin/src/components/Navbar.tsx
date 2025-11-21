@@ -22,7 +22,7 @@ const Navbar: React.FC = () => {
       try {
         const userData = await getUsersMe();
         setUser(userData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to fetch user:', error);
         // Handle error, e.g., redirect to login if unauthorized
         if (error.response && error.response.status === 401) {

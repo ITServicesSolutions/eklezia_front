@@ -161,6 +161,18 @@ const Login: React.FC = () => {
                 'Se connecter'
               )}
             </button>
+            
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Pas encore de compte ?{' '}
+                <Link
+                  to="/register"
+                  className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors duration-200"
+                >
+                  Créer un compte
+                </Link>
+              </p>
+            </div>
           </form>
 
           {/* Additional Info */}
