@@ -146,7 +146,7 @@ const ForgotPassword: React.FC = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-gray-500 dark:text-gray-400 text-sm">
-            © {new Date().getFullYear()} Ekklesia. Tous droits réservés.
+            © {new Date().getFullYear()}. Tous droits réservés.
           </p>
         </div>
       </div>

@@ -140,7 +140,7 @@ const Register: React.FC = () => {
               Créer un compte
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              Rejoignez la communauté Ekklesia
+              Rejoignez la communauté Assemblée de Dieu
             </p>
           </div>
 
@@ -220,7 +220,7 @@ const Register: React.FC = () => {
                   name="phone_number"
                   type="tel"
                   className="block w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-2xl focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
-                  placeholder="+33 1 23 45 67 89"
+                  placeholder="+229 01 97 97 01 00"
                   value={formData.phone_number}
                   onChange={handleChange}
                 />

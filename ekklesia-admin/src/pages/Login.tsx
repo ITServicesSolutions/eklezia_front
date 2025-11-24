@@ -186,7 +186,7 @@ const Login: React.FC = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            © {new Date().getFullYear()} Ekklesia. Tous droits réservés.
+            © {new Date().getFullYear()}. Tous droits réservés.
           </p>
         </div>
       </div>
