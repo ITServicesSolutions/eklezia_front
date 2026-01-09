@@ -1,26 +1,5 @@
 import axiosInstance from './axiosInstance';
 
-export interface PasswordResetRequest {
-  email: string;
-}
-
-export interface PasswordReset {
-  token: string;
-  new_password: string;
-}
-
-export interface LoginCredentials {
-  username: string;
-  password: string;
-}
-
-export interface RegisterData {
-  name: string;
-  email: string;
-  phone_number?: string;
-  password: string;
-}
-
 export const requestPasswordReset = async (email: string) => {
   try {
     const response = await axiosInstance.post('/api/v1/auth/request-password-reset', { email });
@@ -44,11 +23,16 @@ export const resetPassword = async (token: string, newPassword: string) => {
   }
 };
 
-export const loginUser = async (credentials: LoginCredentials) => {
+export const loginUser = async (credentials: { username: string; password: string; source?: string }) => {
   try {
     const formData = new URLSearchParams();
     formData.append('username', credentials.username);
     formData.append('password', credentials.password);
+    
+    // Ajout du paramètre source si fourni
+    if (credentials.source) {
+      formData.append('source', credentials.source);
+    }
 
     const response = await axiosInstance.post('/api/v1/auth/login', formData, {
       headers: {
@@ -59,6 +43,9 @@ export const loginUser = async (credentials: LoginCredentials) => {
   } catch (error: any) {
     if (error.response?.status === 401) {
       throw new Error('Email ou mot de passe incorrect');
+    } else if (error.response?.status === 403) {
+      // Message spécifique pour les utilisateurs non autorisés sur web
+      throw new Error('Vous n\'êtes pas autorisé à accéder à l\'application web. Veuillez utiliser l\'application mobile.');
     } else if (error.response?.status === 404) {
       throw new Error('Endpoint non trouvé. Vérifiez l\'URL de l\'API.');
     } else {
@@ -67,7 +54,7 @@ export const loginUser = async (credentials: LoginCredentials) => {
   }
 };
 
-export const registerUser = async (userData: RegisterData) => {
+export const registerUser = async (userData: { name: string; email: string; phone_number?: string; password: string }) => {
   try {
     const response = await axiosInstance.post('/api/v1/users/', userData, {
       headers: {

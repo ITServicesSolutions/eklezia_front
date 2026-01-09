@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { registerUser, loginUser } from '../api/auth';
+import { registerUser } from '../api/auth';
+
+// Interfaces pour les types
+interface RegisterFormData {
+  name: string;
+  email: string;
+  phone_number: string;
+  password: string;
+  confirmPassword: string;
+}
 
 const Register: React.FC = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RegisterFormData>({
     name: '',
     email: '',
     phone_number: '',
@@ -65,25 +74,15 @@ const Register: React.FC = () => {
 
       setSuccess(true);
       
-      setTimeout(async () => {
-        try {
-          const loginResponse = await loginUser({
-            username: formData.email,
-            password: formData.password
-          });
-
-          if (loginResponse.access_token) {
-            localStorage.setItem('ekklesia-token', loginResponse.access_token);
-            navigate('/');
-          }
-        } catch (loginError) {
-          navigate('/login', { 
-            state: { 
-              message: 'Compte créé avec succès. Veuillez vous connecter.' 
-            } 
-          });
-        }
-      }, 2000);
+      // Attendre 3 secondes avant de rediriger vers la page de connexion
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            successMessage: 'Compte créé avec succès ! Vous pouvez maintenant vous connecter.',
+            email: formData.email // Passer l'email pour pré-remplir le champ de login
+          } 
+        });
+      }, 7000);
 
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -109,14 +108,30 @@ const Register: React.FC = () => {
             </h2>
             
             <p className="text-gray-600 dark:text-gray-300 mb-2">
-              Bienvenue <span className="font-semibold text-indigo-600 dark:text-indigo-400">{formData.name}</span>
+              Félicitations <span className="font-semibold text-indigo-600 dark:text-indigo-400">{formData.name}</span> !
             </p>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">
-              Connexion automatique en cours...
+            <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
+              Votre compte a été créé avec succès.
+            </p>
+            
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Redirection vers la page de connexion...
             </p>
 
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div className="bg-green-600 h-2 rounded-full animate-pulse"></div>
+            </div>
+
+            <div className="mt-6">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Si la redirection ne fonctionne pas,{' '}
+                <Link 
+                  to="/login" 
+                  className="font-medium text-green-600 dark:text-green-400 hover:text-green-500 dark:hover:text-green-300 transition-colors duration-200"
+                >
+                  cliquez ici
+                </Link>
+              </p>
             </div>
           </div>
         </div>

@@ -1,6 +1,28 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axiosInstance from '../api/axiosInstance';
+import { loginUser } from '../api/auth';
+
+export interface PasswordResetRequest {
+  email: string;
+}
+
+export interface PasswordReset {
+  token: string;
+  new_password: string;
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+  source?: string;
+}
+
+export interface RegisterData {
+  name: string;
+  email: string;
+  phone_number?: string;
+  password: string;
+}
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,29 +37,21 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', email);
-      formData.append('password', password);
+      const credentials: LoginCredentials = {
+        username: email,
+        password: password,
+        source: 'web',
+      };
 
-      const response = await axiosInstance.post('/api/v1/auth/login', formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
+      const response = await loginUser(credentials);
 
-      if (response.data.access_token) {
-        localStorage.setItem('ekklesia-token', response.data.access_token);
+      if (response.access_token) {
+        localStorage.setItem('ekklesia-token', response.access_token);
         navigate('/');
       }
     } catch (err: any) {
       console.error(err);
-      if (err.response && err.response.status === 401) {
-        setError('Email ou mot de passe incorrect.');
-      } else if (err.response && err.response.status === 404) {
-        setError('Endpoint non trouvé. Vérifiez l\'URL de l\'API.');
-      } else {
-        setError('Échec de la connexion. Veuillez réessayer.');
-      }
+      setError(err.message || 'Échec de la connexion. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
