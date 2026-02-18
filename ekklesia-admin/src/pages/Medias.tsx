@@ -109,10 +109,10 @@ const Medias: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 dark:from-gray-900 dark:to-gray-800 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600 dark:text-gray-300">Chargement de la médiathèque...</p>
           </div>
         </div>
@@ -121,10 +121,10 @@ const Medias: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-orange-50 dark:from-gray-900 dark:to-gray-800 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
             Médiathèque
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
@@ -135,7 +135,7 @@ const Medias: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center">
-              <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-xl mr-4">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-xl mr-4">
                 <span className="text-2xl">📁</span>
               </div>
               <div>
@@ -189,7 +189,7 @@ const Medias: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
               Tous les médias
-              <span className="ml-2 text-orange-600 dark:text-orange-400">({medias.length})</span>
+              <span className="ml-2 text-blue-600 dark:text-blue-400">({medias.length})</span>
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Gérer votre collection de médias
@@ -199,7 +199,7 @@ const Medias: React.FC = () => {
           {hasManagementPermission && (
             <button
               onClick={() => setShowForm(!showForm)}
-              className="mt-4 sm:mt-0 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
+              className="mt-4 sm:mt-0 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -212,7 +212,7 @@ const Medias: React.FC = () => {
         {showForm && hasManagementPermission && (
           <div className="mb-8 animate-fade-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="bg-gradient-to-r from-orange-600 to-red-600 p-6 relative">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 relative">
                 <button
                   onClick={() => setShowForm(false)}
                   className="absolute left-6 top-1/2 transform -translate-y-1/2 flex items-center space-x-2 text-white hover:text-gray-200 transition-colors duration-200 group"
@@ -244,7 +244,7 @@ const Medias: React.FC = () => {
                       id="event_id"
                       value={eventId || ''}
                       onChange={(e) => setEventId(parseInt(e.target.value) || 0)}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
                       placeholder="Entrez l'ID de l'événement..."
                       required
                       min="1"
@@ -322,7 +322,7 @@ const Medias: React.FC = () => {
               {hasManagementPermission && (
                 <button
                   onClick={() => setShowForm(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-300 font-semibold"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold"
                 >
                   Ajouter le premier média
                 </button>
@@ -458,7 +458,7 @@ const Medias: React.FC = () => {
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.total}</div>
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Médias totaux</div>
             </div>
             <div>

@@ -221,10 +221,10 @@ const Events: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 py-8">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600 dark:text-gray-300">Chargement des événements...</p>
           </div>
         </div>
@@ -233,10 +233,10 @@ const Events: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50 dark:from-gray-900 dark:to-gray-800 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
             Événements
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
@@ -246,13 +246,13 @@ const Events: React.FC = () => {
 
         <div className={`mb-8 p-6 rounded-2xl backdrop-blur-sm border transition-all duration-300 ${
           currentUser 
-            ? 'bg-purple-500/10 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-200' 
+            ? 'bg-blue-500/10 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200' 
             : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
         }`}>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <div className={`p-2 rounded-lg ${
-                currentUser ? 'bg-purple-100 dark:bg-purple-900' : 'bg-amber-100 dark:bg-amber-900'
+                currentUser ? 'bg-blue-100 dark:bg-blue-900' : 'bg-amber-100 dark:bg-amber-900'
               }`}>
                 {currentUser ? (
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -290,7 +290,7 @@ const Events: React.FC = () => {
             {hasManagementPermission && (
               <button
                 onClick={() => setShowForm(!showForm)}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -327,7 +327,7 @@ const Events: React.FC = () => {
         {showForm && hasManagementPermission && (
           <div className="mb-8 animate-fade-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6">
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6">
                 <h4 className="text-xl font-bold text-white flex items-center space-x-2">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -347,7 +347,7 @@ const Events: React.FC = () => {
                     name="title"
                     value={newEvent.title}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
                     placeholder="Donnez un titre à votre événement..."
                     required
                     maxLength={100}
@@ -367,7 +367,7 @@ const Events: React.FC = () => {
                     value={newEvent.description}
                     onChange={handleInputChange}
                     rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none transition-all duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none transition-all duration-200"
                     placeholder="Décrivez votre événement en détail..."
                     maxLength={500}
                   />
@@ -387,7 +387,7 @@ const Events: React.FC = () => {
                       name="start_date"
                       value={newEvent.start_date}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
                       required
                     />
                   </div>
@@ -402,7 +402,7 @@ const Events: React.FC = () => {
                       name="end_date"
                       value={newEvent.end_date}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
                       required
                     />
                   </div>
@@ -448,7 +448,7 @@ const Events: React.FC = () => {
               {currentFilter === 'upcoming' && 'Événements à venir'}
               {currentFilter === 'ongoing' && 'Événements en cours'}
               {currentFilter === 'past' && 'Événements passés'}
-              <span className="ml-2 text-purple-600 dark:text-purple-400">({filteredEvents.length})</span>
+              <span className="ml-2 text-blue-600 dark:text-blue-400">({filteredEvents.length})</span>
             </h2>
             
             <div className="flex space-x-2">
@@ -456,7 +456,7 @@ const Events: React.FC = () => {
                 onClick={() => filterEvents('all')}
                 className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
                   currentFilter === 'all' 
-                    ? 'bg-purple-600 text-white border-purple-600' 
+                    ? 'bg-blue-600 text-white border-blue-600' 
                     : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
@@ -518,7 +518,7 @@ const Events: React.FC = () => {
                 {hasManagementPermission && currentFilter === 'all' && (
                   <button
                     onClick={() => setShowForm(true)}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300 font-semibold"
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold"
                   >
                     Créer le premier événement
                   </button>
@@ -548,7 +548,7 @@ const Events: React.FC = () => {
                         {getStatusText(status)}
                       </div>
                       <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                        <button className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
@@ -568,8 +568,8 @@ const Events: React.FC = () => {
                       
                       <div className="space-y-3 mb-4">
                         <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-300">
-                          <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded-lg">
-                            <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-lg">
+                            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
@@ -582,8 +582,8 @@ const Events: React.FC = () => {
                         </div>
                         
                         <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-300">
-                          <div className="bg-pink-100 dark:bg-pink-900 p-2 rounded-lg">
-                            <svg className="w-4 h-4 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded-lg">
+                            <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                           </div>
@@ -606,7 +606,7 @@ const Events: React.FC = () => {
                         <span className="text-sm text-gray-500 dark:text-gray-400">
                           #{event.id}
                         </span>
-                        <button className="px-4 py-2 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors text-sm font-medium">
+                        <button className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors text-sm font-medium">
                           Voir détails
                         </button>
                       </div>
@@ -621,7 +621,7 @@ const Events: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
             <div>
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{getEventCountByStatus('all')}</div>
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{getEventCountByStatus('all')}</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Événements total</div>
             </div>
             <div>
@@ -637,7 +637,7 @@ const Events: React.FC = () => {
               <div className="text-sm text-gray-600 dark:text-gray-400">En cours</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {hasManagementPermission ? 'Actif' : 'Lecture'}
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Vos permissions</div>
