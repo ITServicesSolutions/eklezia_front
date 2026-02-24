@@ -19,15 +19,13 @@ export const createMedia = async (eventId: number, file: File, title?: string): 
   if (title) formData.append('title', title);
 
   try {
-    const response = await axiosInstance.post('/api/v1/medias/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await axiosInstance.post('/api/v1/medias/', formData);
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
+    // Extraire le message du serveur si disponible
+    const serverMessage = error.response?.data?.detail || error.response?.data?.message || error.message;
     console.error('Error creating media:', error);
-    throw error;
+    throw new Error(serverMessage || 'Erreur lors de l\'ajout du média');
   }
 };
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom'; // Pour le lien vers la création d'événement
 import { getMedias, createMedia, deleteMedia } from '../api/medias';
+import { getEvents } from '../api/events'; // Import de la fonction pour récupérer les événements
 import { getCurrentUser, canManageContent } from '../utils/auth';
 
 export interface Media {
@@ -15,8 +17,16 @@ export interface Media {
   updated_at: string;
 }
 
+// Interface pour un événement (à adapter selon votre modèle)
+interface Event {
+  id: number;
+  title: string;
+  // Ajoutez d'autres champs si nécessaire (date, description, etc.)
+}
+
 const Medias: React.FC = () => {
   const [medias, setMedias] = useState<Media[]>([]);
+  const [events, setEvents] = useState<Event[]>([]); // Liste des événements
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventId, setEventId] = useState<number>(0);
@@ -40,6 +50,16 @@ const Medias: React.FC = () => {
     }
   };
 
+  const fetchEvents = async () => {
+    try {
+      const data = await getEvents();
+      setEvents(data);
+    } catch (error) {
+      console.error('Failed to fetch events', error);
+      setError('Erreur lors du chargement des événements');
+    }
+  };
+
   useEffect(() => {
     const initializeUser = async () => {
       const user = await getCurrentUser();
@@ -48,6 +68,7 @@ const Medias: React.FC = () => {
 
     initializeUser();
     fetchMedias();
+    fetchEvents(); // Charger les événements au montage
   }, []);
 
   const hasManagementPermission = canManageContent(currentUser);
@@ -72,8 +93,8 @@ const Medias: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !eventId) {
-      setError('Veuillez fournir un ID d\'événement et un fichier.');
+    if (!file || eventId <= 0) {
+      setError('Veuillez sélectionner un événement et un fichier.');
       return;
     }
 
@@ -84,10 +105,10 @@ const Medias: React.FC = () => {
       setFile(null);
       setShowForm(false);
       setError(null);
-      fetchMedias();
-    } catch (error) {
+      fetchMedias(); // Rafraîchir la liste après l'upload
+    } catch (error: any) {
       console.error('Failed to create media', error);
-      setError('Erreur lors de l\'ajout du média');
+      setError(error.message || 'Erreur lors de l\'ajout du média');
     } finally {
       setIsUploading(false);
     }
@@ -132,6 +153,7 @@ const Medias: React.FC = () => {
           </p>
         </div>
 
+        {/* Statistiques */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center">
@@ -170,6 +192,7 @@ const Medias: React.FC = () => {
           </div>
         </div>
 
+        {/* Message d'erreur */}
         {error && (
           <div className="mb-8 p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl backdrop-blur-sm">
             <div className="flex items-center justify-between">
@@ -185,6 +208,7 @@ const Medias: React.FC = () => {
           </div>
         )}
 
+        {/* En-tête avec bouton d'ajout */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -209,6 +233,7 @@ const Medias: React.FC = () => {
           )}
         </div>
 
+        {/* Formulaire d'upload (visible si showForm) */}
         {showForm && hasManagementPermission && (
           <div className="mb-8 animate-fade-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -235,22 +260,40 @@ const Medias: React.FC = () => {
               
               <form onSubmit={handleSubmit} className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Sélection de l'événement */}
                   <div className="space-y-2">
                     <label htmlFor="event_id" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      ID de l'événement *
+                      Événement associé *
                     </label>
-                    <input
-                      type="number"
-                      id="event_id"
-                      value={eventId || ''}
-                      onChange={(e) => setEventId(parseInt(e.target.value) || 0)}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
-                      placeholder="Entrez l'ID de l'événement..."
-                      required
-                      min="1"
-                    />
+                    {events.length > 0 ? (
+                      <select
+                        id="event_id"
+                        value={eventId}
+                        onChange={(e) => setEventId(Number(e.target.value))}
+                        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
+                        required
+                      >
+                        <option value="">Sélectionnez un événement</option>
+                        {events.map(event => (
+                          <option key={event.id} value={event.id}>
+                            {event.title} (ID: {event.id})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+                        <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+                          Aucun événement disponible. Veuillez d'abord{' '}
+                          <Link to="/events" className="font-semibold underline">
+                            créer un événement
+                          </Link>
+                          .
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
+                  {/* Upload de fichier */}
                   <div className="space-y-2">
                     <label htmlFor="file_input" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
                       Fichier *
@@ -284,7 +327,7 @@ const Medias: React.FC = () => {
                 <div className="flex space-x-4 pt-4">
                   <button
                     type="submit"
-                    disabled={isUploading}
+                    disabled={isUploading || events.length === 0}
                     className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none font-semibold flex items-center space-x-2"
                   >
                     {isUploading ? (
@@ -307,6 +350,7 @@ const Medias: React.FC = () => {
           </div>
         )}
 
+        {/* Liste des médias */}
         {medias.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
             <div className="max-w-md mx-auto">
@@ -455,6 +499,7 @@ const Medias: React.FC = () => {
           </div>
         )}
 
+        {/* Pied de page avec statistiques */}
         <div className="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div>

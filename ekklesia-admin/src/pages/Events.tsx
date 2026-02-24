@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { getEvents, createEvent } from '../api/events';
 import { getCurrentUser, canManageContent } from '../utils/auth';
+import { useNavigate } from 'react-router-dom';
+import { getEvents, createEvent } from '../api/events'; 
 
 export interface Event {
   id: number;
@@ -21,6 +22,8 @@ export interface CreateEventData {
 type EventFilter = 'all' | 'upcoming' | 'ongoing' | 'past';
 
 const Events: React.FC = () => {
+  const navigate = useNavigate();
+
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [currentFilter, setCurrentFilter] = useState<EventFilter>('all');
@@ -29,6 +32,7 @@ const Events: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [newEvent, setNewEvent] = useState<CreateEventData>({
     title: '',
@@ -105,6 +109,14 @@ const Events: React.FC = () => {
   }, [events]);
 
   const hasManagementPermission = canManageContent(currentUser);
+
+  const handleViewDetails = (id: number) => {
+    navigate(`/events/${id}`);
+  };
+
+  const handleEdit = (id: number) => {
+    navigate(`/events/edit/${id}`);
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -376,7 +388,7 @@ const Events: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <label htmlFor="start_date" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
                       Date et heure de début *
@@ -547,18 +559,6 @@ const Events: React.FC = () => {
                       <div className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(status)}`}>
                         {getStatusText(status)}
                       </div>
-                      <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
                     </div>
 
                     <div className="p-6 pt-0">
@@ -600,15 +600,6 @@ const Events: React.FC = () => {
                         <p className="text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
                           {event.description || 'Aucune description disponible pour cet événement.'}
                         </p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-600">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          #{event.id}
-                        </span>
-                        <button className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors text-sm font-medium">
-                          Voir détails
-                        </button>
                       </div>
                     </div>
                   </div>

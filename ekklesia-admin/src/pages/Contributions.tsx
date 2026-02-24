@@ -53,6 +53,7 @@ const Contributions: React.FC = () => {
   }, [contributions, sortType, sortDate]);
 
   const handleReset = () => {
+    console.log('Bouton cliqué !');
     setSortType('');
     setSortDate('');
   };
@@ -256,6 +257,7 @@ const Contributions: React.FC = () => {
 
               <div className="flex items-end">
                 <button
+                  type="button"
                   onClick={handleReset}
                   className="px-6 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium whitespace-nowrap"
                 >
