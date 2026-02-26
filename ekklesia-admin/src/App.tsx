@@ -14,6 +14,7 @@ import Events from './pages/Events';
 import Medias from './pages/Medias';
 import Contributions from './pages/Contributions';
 import LiveStreams from './pages/LiveStreams';
+import Profile from './pages/Profile';
 
 const AdminLayout: React.FC = () => (
   <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -37,6 +38,7 @@ const AppRoutes: React.FC = () => (
       <Route element={<AdminLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/programs" element={<Programs />} />
         <Route path="/events" element={<Events />} />
         <Route path="/medias" element={<Medias />} />

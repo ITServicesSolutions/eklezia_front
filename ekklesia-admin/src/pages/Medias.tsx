@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom'; // Pour le lien vers la création d'événement
+import { Link } from 'react-router-dom';
 import { getMedias, createMedia, deleteMedia } from '../api/medias';
-import { getEvents } from '../api/events'; // Import de la fonction pour récupérer les événements
+import { getEvents } from '../api/events';
 import { getCurrentUser, canManageContent } from '../utils/auth';
+// import { parseDate, formatDateFrench } from '../utils/dateUtils';
 
 export interface Media {
   id: number;
@@ -13,20 +14,18 @@ export interface Media {
   event_id: number;
   delete_user_id?: number | null;
   delete_date?: string | null;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;   // ← optionnel
+  updated_at?: string;   // ← optionnel
 }
 
-// Interface pour un événement (à adapter selon votre modèle)
 interface Event {
   id: number;
   title: string;
-  // Ajoutez d'autres champs si nécessaire (date, description, etc.)
 }
 
 const Medias: React.FC = () => {
   const [medias, setMedias] = useState<Media[]>([]);
-  const [events, setEvents] = useState<Event[]>([]); // Liste des événements
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [eventId, setEventId] = useState<number>(0);
@@ -68,7 +67,7 @@ const Medias: React.FC = () => {
 
     initializeUser();
     fetchMedias();
-    fetchEvents(); // Charger les événements au montage
+    fetchEvents();
   }, []);
 
   const hasManagementPermission = canManageContent(currentUser);
@@ -105,7 +104,7 @@ const Medias: React.FC = () => {
       setFile(null);
       setShowForm(false);
       setError(null);
-      fetchMedias(); // Rafraîchir la liste après l'upload
+      fetchMedias();
     } catch (error: any) {
       console.error('Failed to create media', error);
       setError(error.message || 'Erreur lors de l\'ajout du média');
@@ -120,13 +119,12 @@ const Medias: React.FC = () => {
     videos: medias.filter(m => m.type === 'video').length,
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  };
+  // Fonction formatDate adaptée
+  // const formatDate = (dateString?: string) => {
+  //   if (!dateString) return 'Date non disponible';
+  //   const date = parseDate(dateString);
+  //   return date ? formatDateFrench(date) : 'Date invalide';
+  // };
 
   if (loading) {
     return (
@@ -452,12 +450,12 @@ const Medias: React.FC = () => {
                     </h5>
                     
                     <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                      <div className="flex items-center space-x-2">
+                      {/* <div className="flex items-center space-x-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <span>{formatDate(media.created_at)}</span>
-                      </div>
+                      </div> */}
                       
                       <div className="flex items-center space-x-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

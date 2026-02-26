@@ -32,7 +32,7 @@ const Events: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  // const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const [newEvent, setNewEvent] = useState<CreateEventData>({
     title: '',
@@ -110,13 +110,13 @@ const Events: React.FC = () => {
 
   const hasManagementPermission = canManageContent(currentUser);
 
-  const handleViewDetails = (id: number) => {
-    navigate(`/events/${id}`);
-  };
+  // const handleViewDetails = (id: number) => {
+  //   navigate(`/events/${id}`);
+  // };
 
-  const handleEdit = (id: number) => {
-    navigate(`/events/edit/${id}`);
-  };
+  // const handleEdit = (id: number) => {
+  //   navigate(`/events/edit/${id}`);
+  // };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
