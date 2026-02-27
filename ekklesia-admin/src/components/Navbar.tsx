@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUsersMe } from '../api/users';
 import { logoutUser } from '../api/auth';
@@ -189,12 +189,12 @@ const Navbar: React.FC = () => {
     <header className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm dark:bg-gray-900/95 dark:border-gray-700">
       {/* Logo + Titre */}
       <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-md">
-          <span className="text-white font-bold text-lg">EAD</span>
+        <div className="w-15 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-md">
+          <span className="text-white font-bold text-lg">EEAD-TU</span>
         </div>
         <div className="hidden sm:block">
           <h1 className="text-base font-semibold text-gray-900 dark:text-white leading-tight">
-            Église Assemblées de Dieu
+            Eglise Evangelique des Assemblees de Dieu
           </h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">Temple Universitaire</p>
         </div>
