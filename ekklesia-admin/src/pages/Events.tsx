@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getCurrentUser, canManageContent } from '../utils/auth';
-import { useNavigate } from 'react-router-dom';
 import { getEvents, createEvent } from '../api/events'; 
 
 export interface Event {
@@ -22,7 +21,6 @@ export interface CreateEventData {
 type EventFilter = 'all' | 'upcoming' | 'ongoing' | 'past';
 
 const Events: React.FC = () => {
-  const navigate = useNavigate();
 
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);

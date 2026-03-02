@@ -34,7 +34,7 @@ const Medias: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [deletingMediaId, setDeletingMediaId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const backendUrl = import.meta.env.VITE_API_BASE_URL || 'https://eklezia.api.it-servicegroup.com';
 
   const fetchMedias = async () => {
     try {

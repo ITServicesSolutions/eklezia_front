@@ -196,7 +196,7 @@ const Dashboard: React.FC = () => {
             'Content-Type': 'application/json',
           },
         };
-        const baseURL = 'http://eklezia.api.it-servicegroup.com';
+        const baseURL = 'https://eklezia.api.it-servicegroup.com';
 
         const [adsRes, eventsRes, contributionsRes] = await Promise.all([
           fetch(`${baseURL}/api/v1/programs/`, fetchOptions),
@@ -400,15 +400,15 @@ const Dashboard: React.FC = () => {
             <div className="flex justify-center items-center h-64 text-gray-400">Aucune donnée</div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 30 }}>
+                <ScatterChart margin={{ top: 30, right: 30, left: 20, bottom: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="date"
                   name="Date"
                   tickFormatter={(tick) => {
-                    if (!tick) return '';
-                    const date = parseDate(tick);
-                    return date ? date.toLocaleDateString('fr', { day: '2-digit', month: 'short' }) : tick;
+                  if (!tick) return '';
+                  const date = parseDate(tick);
+                  return date ? date.toLocaleDateString('fr', { day: '2-digit', month: 'short' }) : tick;
                   }}
                   tick={{ fill: '#6b7280', fontSize: 12 }}
                   label={{ value: 'Date', position: 'insideBottom', offset: -10, fill: '#6b7280' }}
@@ -423,9 +423,9 @@ const Dashboard: React.FC = () => {
                 />
                 <ZAxis range={[50, 50]} />
                 <Tooltip content={<CustomAdTooltip />} />
-                <Legend />
+                <Legend wrapperStyle={{ paddingTop: 20, paddingBottom: 0 }} />
                 <Scatter name="Annonces" data={filteredData.adsData} fill={COLORS.annonces} shape="circle" />
-              </ScatterChart>
+                </ScatterChart>
             </ResponsiveContainer>
           )}
         </div>

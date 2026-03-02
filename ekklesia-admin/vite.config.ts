@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://eklezia.api.it-servicegroup.com',
+        target: 'https://eklezia.api.it-servicegroup.com',
         changeOrigin: true,
         timeout: 60000, // 60 secondes
       },

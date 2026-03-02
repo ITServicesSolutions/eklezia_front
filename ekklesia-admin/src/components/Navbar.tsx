@@ -71,7 +71,7 @@ const Navbar: React.FC = () => {
         const token = localStorage.getItem('ekklesia-token');
         if (!token) throw new Error('Non authentifié.');
 
-        const baseURL = 'http://eklezia.api.it-servicegroup.com';
+        const baseURL = 'https://eklezia.api.it-servicegroup.com';
         const headers = {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
