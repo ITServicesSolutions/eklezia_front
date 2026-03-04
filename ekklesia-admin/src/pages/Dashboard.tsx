@@ -10,14 +10,14 @@ import { parseDate } from '../utils/dateUtils';
 type RawProgram = { 
   program_day?: string; 
   start_time?: string; 
-  hours_start?: string;   // ← ajouté
+  hours_start?: string;
 };
 type RawEvent = { start_date?: string; end_date?: string };
 type RawContribution = {
   status: string; created_at?: string; type?: string; amount?: number 
 };
 
-type AdsDataPoint = { date: string; hour: number; name: string }; // hour est un entier (ex: 8 pour 08:00)
+type AdsDataPoint = { date: string; hour: number; name: string };
 type ContributionsDataPoint = { name: string; dons: number; dîmes: number; offrandes: number };
 
 const COLORS = {
@@ -115,29 +115,18 @@ const CustomEventTooltip = ({ active, payload, label }: any) => {
 
 // Récupération de l'heure (entière) depuis un champ time ou datetime
 const getHourFromProgram = (prog: RawProgram): number | null => {
-  // 1. Essayer hours_start (format "HH:MM:SS" ou "HH:MM")
   if (prog.hours_start) {
     const match = prog.hours_start.match(/^(\d{1,2}):/);
-    if (match) {
-      return parseInt(match[1], 10);
-    }
+    if (match) return parseInt(match[1], 10);
   }
-  // 2. Essayer start_time (format "HH:MM:SS" ou "HH:MM")
   if (prog.start_time) {
     const match = prog.start_time.match(/^(\d{1,2}):/);
-    if (match) {
-      return parseInt(match[1], 10);
-    }
+    if (match) return parseInt(match[1], 10);
   }
-  // 3. Sinon, utiliser program_day si c'est une date complète (peut contenir l'heure)
   if (prog.program_day) {
     const date = parseDate(prog.program_day);
-    if (date) {
-      // Si la date a une heure non nulle, on l'utilise
-      if (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0) {
-        return date.getHours();
-      }
-      // Sinon, c'est probablement juste une date sans heure → on ne peut pas déterminer l'heure
+    if (date && (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0)) {
+      return date.getHours();
     }
   }
   return null;
@@ -176,8 +165,12 @@ const Dashboard: React.FC = () => {
   const [rawPrograms, setRawPrograms] = useState<RawProgram[]>([]);
   const [rawEvents, setRawEvents] = useState<RawEvent[]>([]);
   const [rawContributions, setRawContributions] = useState<RawContribution[]>([]);
+  // États d'erreur spécifiques
+  const [programsError, setProgramsError] = useState<string | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [contributionsError, setContributionsError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null); // erreur globale (token manquant)
 
   // États pour les filtres de date
   const [startDate, setStartDate] = useState<string>('');
@@ -185,43 +178,72 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const loadAllData = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('ekklesia-token');
-        if (!token) throw new Error('Non authentifié.');
+      setLoading(true);
+      // Réinitialiser les erreurs
+      setProgramsError(null);
+      setEventsError(null);
+      setContributionsError(null);
+      setAuthError(null);
 
-        const fetchOptions = {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        };
-        const baseURL = 'http://localhost:8000';
-
-        const [adsRes, eventsRes, contributionsRes] = await Promise.all([
-          fetch(`${baseURL}/api/v1/programs/`, fetchOptions),
-          fetch(`${baseURL}/api/v1/events/`, fetchOptions),
-          fetch(`${baseURL}/api/v1/contributions/`, fetchOptions)
-        ]);
-
-        if (!adsRes.ok || !eventsRes.ok || !contributionsRes.ok) {
-          throw new Error('Erreur lors du chargement des données');
-        }
-
-        const programs = await adsRes.json();
-        const events = await eventsRes.json();
-        const contributions = await contributionsRes.json();
-
-        setRawPrograms(Array.isArray(programs) ? programs : []);
-        setRawEvents(Array.isArray(events) ? events : []);
-        setRawContributions(Array.isArray(contributions) ? contributions : []);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur inconnue');
-        console.error(err);
-      } finally {
+      const token = localStorage.getItem('ekklesia-token');
+      if (!token) {
+        setAuthError('Non authentifié. Veuillez vous connecter.');
         setLoading(false);
+        return;
       }
+
+      const baseURL = 'http://localhost:8000';
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+
+      // Requête programmes (annonces)
+      try {
+        const res = await fetch(`${baseURL}/api/v1/programs/`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setRawPrograms(Array.isArray(data) ? data : []);
+        } else if (res.status === 403) {
+          setProgramsError("Accès aux annonces non autorisé");
+        } else {
+          setProgramsError("Erreur lors du chargement des annonces");
+        }
+      } catch (err) {
+        setProgramsError("Erreur réseau lors du chargement des annonces");
+      }
+
+      // Requête événements
+      try {
+        const res = await fetch(`${baseURL}/api/v1/events/`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setRawEvents(Array.isArray(data) ? data : []);
+        } else if (res.status === 403) {
+          setEventsError("Accès aux événements non autorisé");
+        } else {
+          setEventsError("Erreur lors du chargement des événements");
+        }
+      } catch (err) {
+        setEventsError("Erreur réseau lors du chargement des événements");
+      }
+
+      // Requête contributions
+      try {
+        const res = await fetch(`${baseURL}/api/v1/contributions/`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setRawContributions(Array.isArray(data) ? data : []);
+        } else if (res.status === 403) {
+          setContributionsError("Accès aux contributions non autorisé");
+        } else {
+          setContributionsError("Erreur lors du chargement des contributions");
+        }
+      } catch (err) {
+        setContributionsError("Erreur réseau lors du chargement des contributions");
+      }
+
+      setLoading(false);
     };
 
     loadAllData();
@@ -259,7 +281,6 @@ const Dashboard: React.FC = () => {
       const day = getDayKey(event.start_date);
       if (!day) return;
 
-      // Guard against undefined start_date / end_date
       const start = event.start_date ? parseDate(event.start_date) : null;
       const end = event.end_date ? parseDate(event.end_date) : null;
       let duration = 0;
@@ -317,6 +338,7 @@ const Dashboard: React.FC = () => {
     };
   }, [rawPrograms, rawEvents, rawContributions, startDate, endDate]);
 
+  // Affichage du chargement
   if (loading) {
     return (
       <div className="p-4">
@@ -330,14 +352,15 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  if (error) {
+  // Affichage d'une erreur d'authentification globale (token manquant)
+  if (authError) {
     return (
       <div className="p-4">
         <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-6">
           Tableau de bord
         </h3>
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
+          {authError}
         </div>
       </div>
     );
@@ -396,19 +419,21 @@ const Dashboard: React.FC = () => {
           <h4 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4">
             Annonces par date et heure
           </h4>
-          {filteredData.adsData.length === 0 ? (
+          {programsError ? (
+            <div className="flex justify-center items-center h-64 text-red-400">{programsError}</div>
+          ) : filteredData.adsData.length === 0 ? (
             <div className="flex justify-center items-center h-64 text-gray-400">Aucune donnée</div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-                <ScatterChart margin={{ top: 30, right: 30, left: 20, bottom: 40 }}>
+              <ScatterChart margin={{ top: 30, right: 30, left: 20, bottom: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="date"
                   name="Date"
                   tickFormatter={(tick) => {
-                  if (!tick) return '';
-                  const date = parseDate(tick);
-                  return date ? date.toLocaleDateString('fr', { day: '2-digit', month: 'short' }) : tick;
+                    if (!tick) return '';
+                    const date = parseDate(tick);
+                    return date ? date.toLocaleDateString('fr', { day: '2-digit', month: 'short' }) : tick;
                   }}
                   tick={{ fill: '#6b7280', fontSize: 12 }}
                   label={{ value: 'Date', position: 'insideBottom', offset: -10, fill: '#6b7280' }}
@@ -425,7 +450,7 @@ const Dashboard: React.FC = () => {
                 <Tooltip content={<CustomAdTooltip />} />
                 <Legend wrapperStyle={{ paddingTop: 20, paddingBottom: 0 }} />
                 <Scatter name="Annonces" data={filteredData.adsData} fill={COLORS.annonces} shape="circle" />
-                </ScatterChart>
+              </ScatterChart>
             </ResponsiveContainer>
           )}
         </div>
@@ -435,7 +460,9 @@ const Dashboard: React.FC = () => {
           <h4 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4">
             Événements (nombre et durée moyenne)
           </h4>
-          {filteredData.eventsData.length === 0 ? (
+          {eventsError ? (
+            <div className="flex justify-center items-center h-64 text-red-400">{eventsError}</div>
+          ) : filteredData.eventsData.length === 0 ? (
             <div className="flex justify-center items-center h-64 text-gray-400">Aucune donnée</div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -482,63 +509,65 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Deuxième ligne : Contributions */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-        <h4 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4">Contributions</h4>
-        {filteredData.contributionsData.length === 0 ? (
-          <div className="flex justify-center items-center h-64 text-gray-400">Aucune donnée</div>
-        ) : (
-          <ResponsiveContainer width="100%" height={350}>
-            <ComposedChart data={filteredData.contributionsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: '#64748b', fontSize: 12 }}
-                axisLine={{ stroke: '#cbd5e1' }}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={formatYAxis}
-                tick={{ fill: '#64748b', fontSize: 12 }}
-                axisLine={{ stroke: '#cbd5e1' }}
-                tickLine={false}
-                label={{ value: 'Montant (F CFA)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 11 }}
-              />
-              <Tooltip content={<CustomContribTooltip />} />
-              <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{ paddingBottom: 10 }} />
-              <Area
-                type="monotone"
-                dataKey="dons"
-                stroke={COLORS.dons}
-                strokeWidth={2.5}
-                fill={COLORS.dons}
-                fillOpacity={0.1}
-                dot={false}
-                activeDot={{ r: 6, stroke: COLORS.dons, strokeWidth: 2, fill: '#fff' }}
-                name="Dons"
-              />
-              <Line
-                type="monotone"
-                dataKey="dîmes"
-                stroke={COLORS.dîmes}
-                strokeWidth={2.5}
-                dot={{ r: 3, fill: COLORS.dîmes, strokeWidth: 0 }}
-                activeDot={{ r: 6, stroke: COLORS.dîmes, strokeWidth: 2, fill: '#fff' }}
-                name="Dîmes"
-              />
-              <Line
-                type="monotone"
-                dataKey="offrandes"
-                stroke={COLORS.offrandes}
-                strokeWidth={2.5}
-                dot={{ r: 3, fill: COLORS.offrandes, strokeWidth: 0 }}
-                activeDot={{ r: 6, stroke: COLORS.offrandes, strokeWidth: 2, fill: '#fff' }}
-                name="Offrandes"
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
-      </div>
+      {/* Deuxième ligne : Contributions - affichée uniquement si pas d'erreur */}
+      {!contributionsError && (
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+          <h4 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4">Contributions</h4>
+          {filteredData.contributionsData.length === 0 ? (
+            <div className="flex justify-center items-center h-64 text-gray-400">Aucune donnée</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={350}>
+              <ComposedChart data={filteredData.contributionsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: '#64748b', fontSize: 12 }}
+                  axisLine={{ stroke: '#cbd5e1' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={formatYAxis}
+                  tick={{ fill: '#64748b', fontSize: 12 }}
+                  axisLine={{ stroke: '#cbd5e1' }}
+                  tickLine={false}
+                  label={{ value: 'Montant (F CFA)', angle: -90, position: 'insideLeft', fill: '#64748b', fontSize: 11 }}
+                />
+                <Tooltip content={<CustomContribTooltip />} />
+                <Legend verticalAlign="top" height={40} iconType="circle" wrapperStyle={{ paddingBottom: 10 }} />
+                <Area
+                  type="monotone"
+                  dataKey="dons"
+                  stroke={COLORS.dons}
+                  strokeWidth={2.5}
+                  fill={COLORS.dons}
+                  fillOpacity={0.1}
+                  dot={false}
+                  activeDot={{ r: 6, stroke: COLORS.dons, strokeWidth: 2, fill: '#fff' }}
+                  name="Dons"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="dîmes"
+                  stroke={COLORS.dîmes}
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: COLORS.dîmes, strokeWidth: 0 }}
+                  activeDot={{ r: 6, stroke: COLORS.dîmes, strokeWidth: 2, fill: '#fff' }}
+                  name="Dîmes"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="offrandes"
+                  stroke={COLORS.offrandes}
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: COLORS.offrandes, strokeWidth: 0 }}
+                  activeDot={{ r: 6, stroke: COLORS.offrandes, strokeWidth: 2, fill: '#fff' }}
+                  name="Offrandes"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      )}
     </div>
   );
 };
