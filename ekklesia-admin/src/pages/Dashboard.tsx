@@ -196,7 +196,7 @@ const Dashboard: React.FC = () => {
             'Content-Type': 'application/json',
           },
         };
-        const baseURL = 'https://eklezia.api.it-servicegroup.com';
+        const baseURL = 'http://localhost:8000';
 
         const [adsRes, eventsRes, contributionsRes] = await Promise.all([
           fetch(`${baseURL}/api/v1/programs/`, fetchOptions),

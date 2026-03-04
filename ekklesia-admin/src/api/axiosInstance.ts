@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: 'https://eklezia.api.it-servicegroup.com', // Remplacez par l'URL de votre API
+  baseURL: 'http://localhost:8000', // Remplacez par l'URL de votre API
 });
 
 // Intercepteur pour ajouter le token d'authentification
