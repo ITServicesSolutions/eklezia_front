@@ -17,7 +17,6 @@ type RawContribution = {
 };
 
 type AdsDataPoint = { date: string; hour: number; name: string };
-type EventsDataPoint = { name: string; événements: number; durée_moyenne: number };
 type ContributionsDataPoint = { name: string; dons: number; dîmes: number; offrandes: number };
 
 const COLORS = {
