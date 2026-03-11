@@ -47,6 +47,7 @@ const Sidebar: React.FC = () => {
     { to: '/', icon: <Home size={20} />, label: 'Dashboard', roles: ['admin', 'moderator'] },
     { to: '/users', icon: <Users size={20} />, label: 'Users', roles: ['admin'] },
     { to: '/programs', icon: <Calendar size={20} />, label: 'Programs', roles: ['admin', 'moderator'] },
+    {to: '/program-types', icon: <Calendar size={20} />, label: 'Program Types', roles: ['admin', 'moderator'] },
     { to: '/events', icon: <Clapperboard size={20} />, label: 'Events', roles: ['admin', 'moderator'] },
     { to: '/medias', icon: <Film size={20} />, label: 'Medias', roles: ['admin', 'moderator'] },
     { to: '/contributions', icon: <HandHeart size={20} />, label: 'Contributions', roles: ['admin'] },

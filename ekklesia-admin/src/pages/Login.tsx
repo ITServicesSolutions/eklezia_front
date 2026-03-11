@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../api/auth';
+import logo from '../assets/images/logo.jpeg';
 
 export interface PasswordResetRequest {
   email: string;
@@ -65,16 +66,17 @@ const Login: React.FC = () => {
           
           {/* Header Section */}
           <div className="text-center mb-8">
-            {/* Logo/Icon */}
-            <div className="mx-auto w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-              <span className="font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-white ">
-                EEAD-TU
-              </span>
+            {/*Logo/Icon */}
+            <div className="mb-6 flex justify-center">
+              <img 
+              src={logo} 
+              alt="logo" 
+              className="h-16 w-16 object-contain"
+              />
             </div>
-            
             {/* Title */}
             <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
-              Connexion Ekklesia
+              Connexion EEAD-TU
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
               Accédez à votre espace d'administration

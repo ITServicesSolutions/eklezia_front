@@ -10,11 +10,13 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Programs from './pages/Programs';
+import ProgramTypes from './pages/programTypes';
 import Events from './pages/Events';
 import Medias from './pages/Medias';
 import Contributions from './pages/Contributions';
 import LiveStreams from './pages/LiveStreams';
 import Profile from './pages/Profile';
+
 
 const AdminLayout: React.FC = () => (
   <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -40,6 +42,7 @@ const AppRoutes: React.FC = () => (
         <Route path="/users" element={<Users />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/programs" element={<Programs />} />
+        <Route path="/program-types" element={<ProgramTypes />} />
         <Route path="/events" element={<Events />} />
         <Route path="/medias" element={<Medias />} />
         <Route path="/contributions" element={<Contributions />} />

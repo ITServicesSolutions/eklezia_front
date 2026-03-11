@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, ComposedChart, Area, ScatterChart, Scatter,
-  ZAxis
+  ResponsiveContainer, ComposedChart, Area, LineChart
 } from 'recharts';
 import { parseDate } from '../utils/dateUtils';
 
@@ -18,6 +17,7 @@ type RawContribution = {
 };
 
 type AdsDataPoint = { date: string; hour: number; name: string };
+type EventsDataPoint = { name: string; événements: number; durée_moyenne: number };
 type ContributionsDataPoint = { name: string; dons: number; dîmes: number; offrandes: number };
 
 const COLORS = {
@@ -48,34 +48,17 @@ const formatCurrency = (value: number | undefined) => {
   }).format(value);
 };
 
-// Tooltip personnalisé pour les annonces (scatter)
-const CustomAdTooltip = ({ active, payload }: any) => {
+// Tooltip personnalisé pour les annonces (nouveau pour la courbe)
+const CustomAdsTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    if (!data?.date) return null;
-    const date = parseDate(data.date);
-    const formattedDate = date ? date.toLocaleDateString('fr') : data.date;
+    const date = parseDate(label);
+    const formattedDate = date ? date.toLocaleDateString('fr') : label;
     return (
       <div className="bg-gray-900 text-white p-3 rounded-lg shadow-lg border border-gray-700">
-        <p className="text-sm font-medium">{formattedDate}</p>
-        <p className="text-xs">Heure : {data.hour}h</p>
-      </div>
-    );
-  }
-  return null;
-};
-
-// Tooltip pour les contributions
-const CustomContribTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-gray-900 text-white p-3 rounded-lg shadow-lg border border-gray-700">
-        <p className="text-sm font-medium mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-xs" style={{ color: entry.color }}>
-            {entry.name} : {formatCurrency(entry.value)}
-          </p>
-        ))}
+        <p className="text-sm font-medium mb-2">{formattedDate}</p>
+        <p className="text-xs" style={{ color: COLORS.annonces }}>
+          Heure : {payload[0].value}h
+        </p>
       </div>
     );
   }
@@ -107,6 +90,23 @@ const CustomEventTooltip = ({ active, payload, label }: any) => {
           }
           return null;
         })}
+      </div>
+    );
+  }
+  return null;
+};
+
+// Tooltip pour les contributions
+const CustomContribTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-gray-900 text-white p-3 rounded-lg shadow-lg border border-gray-700">
+        <p className="text-sm font-medium mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-xs" style={{ color: entry.color }}>
+            {entry.name} : {formatCurrency(entry.value)}
+          </p>
+        ))}
       </div>
     );
   }
@@ -170,7 +170,7 @@ const Dashboard: React.FC = () => {
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [contributionsError, setContributionsError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [authError, setAuthError] = useState<string | null>(null); // erreur globale (token manquant)
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // États pour les filtres de date
   const [startDate, setStartDate] = useState<string>('');
@@ -179,7 +179,6 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const loadAllData = async () => {
       setLoading(true);
-      // Réinitialiser les erreurs
       setProgramsError(null);
       setEventsError(null);
       setContributionsError(null);
@@ -198,7 +197,7 @@ const Dashboard: React.FC = () => {
         'Content-Type': 'application/json',
       };
 
-      // Requête programmes (annonces)
+      // Programmes (annonces)
       try {
         const res = await fetch(`${baseURL}/api/v1/programs/`, { headers });
         if (res.ok) {
@@ -213,7 +212,7 @@ const Dashboard: React.FC = () => {
         setProgramsError("Erreur réseau lors du chargement des annonces");
       }
 
-      // Requête événements
+      // Événements
       try {
         const res = await fetch(`${baseURL}/api/v1/events/`, { headers });
         if (res.ok) {
@@ -228,7 +227,7 @@ const Dashboard: React.FC = () => {
         setEventsError("Erreur réseau lors du chargement des événements");
       }
 
-      // Requête contributions
+      // Contributions
       try {
         const res = await fetch(`${baseURL}/api/v1/contributions/`, { headers });
         if (res.ok) {
@@ -249,16 +248,15 @@ const Dashboard: React.FC = () => {
     loadAllData();
   }, []);
 
-  // Filtrage et agrégation des données en fonction des dates sélectionnées
+  // Filtrage et agrégation des données
   const filteredData = useMemo(() => {
-    // Fonction utilitaire pour vérifier si une date est dans l'intervalle
     const isDateInRange = (dateStr: string | undefined): boolean => {
       if (!dateStr) return false;
       const date = parseDate(dateStr);
       if (!date) return false;
       const dateTime = date.getTime();
       const start = startDate ? new Date(startDate).getTime() : -Infinity;
-      const end = endDate ? new Date(endDate).getTime() + 86400000 - 1 : Infinity; // fin de journée inclusive
+      const end = endDate ? new Date(endDate).getTime() + 86400000 - 1 : Infinity;
       return dateTime >= start && dateTime <= end;
     };
 
@@ -272,6 +270,7 @@ const Dashboard: React.FC = () => {
         adsPoints.push({ date: day, hour, name: day });
       }
     });
+    // Tri chronologique pour que la ligne suive l'ordre des dates
     adsPoints.sort((a, b) => a.date.localeCompare(b.date));
 
     // ---- Événements ----
@@ -338,7 +337,6 @@ const Dashboard: React.FC = () => {
     };
   }, [rawPrograms, rawEvents, rawContributions, startDate, endDate]);
 
-  // Affichage du chargement
   if (loading) {
     return (
       <div className="p-4">
@@ -352,7 +350,6 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // Affichage d'une erreur d'authentification globale (token manquant)
   if (authError) {
     return (
       <div className="p-4">
@@ -412,9 +409,9 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Première ligne : Annonces et Événements */}
+      {/* Première ligne : Annonces (courbe) et Événements */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Annonces */}
+        {/* Annonces - courbe (date vs heure) */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
           <h4 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4">
             Annonces par date et heure
@@ -425,37 +422,43 @@ const Dashboard: React.FC = () => {
             <div className="flex justify-center items-center h-64 text-gray-400">Aucune donnée</div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <ScatterChart margin={{ top: 30, right: 30, left: 20, bottom: 40 }}>
+              <LineChart data={filteredData.adsData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="date"
-                  name="Date"
                   tickFormatter={(tick) => {
                     if (!tick) return '';
                     const date = parseDate(tick);
                     return date ? date.toLocaleDateString('fr', { day: '2-digit', month: 'short' }) : tick;
                   }}
                   tick={{ fill: '#6b7280', fontSize: 12 }}
-                  label={{ value: 'Date', position: 'insideBottom', offset: -10, fill: '#6b7280' }}
+                  label={{ value: 'Date', position: 'insideBottom', offset: -3, fill: '#6b7280', fontSize: 11 }}
                 />
                 <YAxis
                   dataKey="hour"
-                  name="Heure"
                   domain={[0, 23]}
                   tick={{ fill: '#6b7280', fontSize: 12 }}
-                  label={{ value: 'Heure', angle: -90, position: 'insideLeft', fill: '#6b7280' }}
+                  label={{ value: 'Heure', angle: -90, position: 'insideLeft', fill: '#6b7280', fontSize: 11 }}
                   ticks={[0, 3, 6, 9, 12, 15, 18, 21, 23]}
                 />
-                <ZAxis range={[50, 50]} />
-                <Tooltip content={<CustomAdTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: 20, paddingBottom: 0 }} />
-                <Scatter name="Annonces" data={filteredData.adsData} fill={COLORS.annonces} shape="circle" />
-              </ScatterChart>
+                <Tooltip content={<CustomAdsTooltip />} />
+                <Legend verticalAlign="top" height={36} iconType="circle" />
+                <Line
+                  type="monotone"
+                  dataKey="hour"
+                  stroke={COLORS.annonces}
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: COLORS.annonces, strokeWidth: 0 }}
+                  activeDot={{ r: 6, stroke: COLORS.annonces, strokeWidth: 2, fill: '#fff' }}
+                  name="Heure de l'annonce"
+                  connectNulls={false}
+                />
+              </LineChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        {/* Événements */}
+        {/* Événements - inchangé */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
           <h4 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4">
             Événements (nombre et durée moyenne)
@@ -509,7 +512,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Deuxième ligne : Contributions - affichée uniquement si pas d'erreur */}
+      {/* Deuxième ligne : Contributions - inchangé */}
       {!contributionsError && (
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
           <h4 className="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4">Contributions</h4>
