@@ -39,3 +39,13 @@ export const getRoles = async () => {
     throw error;
   }
 };
+
+export interface UserUpdateData {
+  name?: string;
+  phone_number?: string;
+}
+
+export const updateCurrentUser = async (data: UserUpdateData) => {
+  const response = await axiosInstance.patch('/api/v1/users/me', data);
+  return response.data;
+};

@@ -15,6 +15,8 @@ export interface Program {
   user_id: number;
   program_type_id: number;
   program_type?: ProgramType;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CreateProgramData {

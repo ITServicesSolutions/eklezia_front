@@ -659,36 +659,38 @@ const Programs: React.FC = () => {
 
         {/* Modal de visualisation */}
         {viewingProgram && (
-          <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-              <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setViewingProgram(null)}></div>
-              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-              <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex justify-between items-center">
-                  <h3 className="text-lg font-medium text-white" id="modal-title">
-                    Détails du programme
-                  </h3>
-                  <button
-                    onClick={() => setViewingProgram(null)}
-                    className="text-white hover:text-gray-200 focus:outline-none"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="px-6 py-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{formatDate(viewingProgram.program_day)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Heure</label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{formatTime(viewingProgram.hours_start)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
-                    <div className="mt-1">
+          <div
+            className="fixed inset-0 z-50 overflow-y-auto"
+            aria-labelledby="modal-title"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+              {/* Overlay avec flou */}
+              <div
+                className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
+                aria-hidden="true"
+                onClick={() => setViewingProgram(null)}
+              ></div>
+
+              <span
+                className="hidden sm:inline-block sm:align-middle sm:h-screen"
+                aria-hidden="true"
+              >
+                &#8203;
+              </span>
+
+              {/* Modale */}
+              <div className="inline-block w-full max-w-lg p-6 overflow-hidden text-left align-bottom transition-all transform bg-white dark:bg-gray-800 rounded-2xl shadow-2xl sm:my-8 sm:align-middle sm:p-8">
+                {/* Barre de dégradé en haut */}
+                <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white" id="modal-title">
+                      Détails du programme
+                    </h3>
+                    <div className="flex items-center mt-2 space-x-2">
                       {(() => {
                         const type = programTypes.find(t => t.id === viewingProgram.program_type_id);
                         return type ? (
@@ -702,20 +704,95 @@ const Programs: React.FC = () => {
                           <span className="text-sm text-gray-500">Type inconnu</span>
                         );
                       })()}
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        ID: #{viewingProgram.id}
+                      </span>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                      {viewingProgram.description || 'Aucune description'}
+                  <button
+                    onClick={() => setViewingProgram(null)}
+                    className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Date et Heure */}
+                <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                    <div className="flex items-center mb-2 text-blue-700 dark:text-blue-300">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-semibold">Date</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatDate(viewingProgram.program_day)}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                    <div className="flex items-center mb-2 text-purple-700 dark:text-purple-300">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="font-semibold">Heure</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatTime(viewingProgram.hours_start)}
                     </p>
                   </div>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700 px-6 py-3 flex justify-end">
+
+                {/* Description */}
+                <div className="mb-6">
+                  <h4 className="flex items-center mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Description
+                  </h4>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {viewingProgram.description || 'Aucune description fournie.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Dates de création et modification */}
+                <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                    <div className="flex items-center mb-2 text-blue-700 dark:text-blue-300">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="font-semibold">Créé le</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {viewingProgram.created_at ? new Date(viewingProgram.created_at).toLocaleString('fr-FR') : '—'}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                    <div className="flex items-center mb-2 text-purple-700 dark:text-purple-300">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span className="font-semibold">Modifié le</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {viewingProgram.updated_at ? new Date(viewingProgram.updated_at).toLocaleString('fr-FR') : '—'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pied de page */}
+                <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
                   <button
-                    type="button"
                     onClick={() => setViewingProgram(null)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     Fermer
                   </button>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUsersMe } from '../api/users';
-import { resetPassword } from '../api/auth';
+import { getUsersMe, updateCurrentUser } from '../api/users';
+import { resetPasswordProfile} from '../api/auth';
 import { Save, Lock, Mail, User as UserIcon, Phone, Eye, EyeOff } from 'lucide-react';
 
 // Type utilisateur correspondant à la réponse API
@@ -21,7 +21,7 @@ const Profile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Édition du profil
   const [isEditing, setIsEditing] = useState(false);
@@ -67,20 +67,21 @@ const Profile: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-//   const handleSaveProfile = async () => {
-//     try {
-//       setLoading(true);
-//       const updated = await updateCurrentUser(formData);
-//       setUser(prev => ({ ...prev!, ...updated }));
-//       setIsEditing(false);
-//       setSuccessMessage('Profil mis à jour avec succès');
-//       setTimeout(() => setSuccessMessage(null), 3000);
-//     } catch (err: any) {
-//       setError(err.message || 'Erreur lors de la mise à jour');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
+  const handleSaveProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updated = await updateCurrentUser(formData);
+      setUser(prev => ({ ...prev!, ...updated }));
+      setIsEditing(false);
+      setSuccessMessage('Profil mis à jour avec succès');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,12 +99,12 @@ const Profile: React.FC = () => {
 
     try {
       setLoading(true);
-      await resetPassword(passwordData.current, passwordData.new);
+      await resetPasswordProfile(passwordData.current, passwordData.new);
       setPasswordSuccess('Mot de passe modifié avec succès');
       setPasswordData({ current: '', new: '', confirm: '' });
       setShowPasswordForm(false);
     } catch (err: any) {
-      setPasswordError(err.message || 'Erreur lors du changement');
+       setPasswordError(err.response?.data?.detail || err.message || 'Erreur lors du changement');
     } finally {
       setLoading(false);
     }
@@ -171,7 +172,7 @@ const Profile: React.FC = () => {
               ) : (
                 <div className="space-x-2">
                   <button
-                    // onClick={handleSaveProfile}
+                    onClick={handleSaveProfile}
                     disabled={loading}
                     className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                   >

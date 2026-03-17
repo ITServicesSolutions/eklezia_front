@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { getCurrentUser, canManageContent } from '../utils/auth';
-import { getEvents, createEvent } from '../api/events';
+import { getEvents, createEvent, updateEvent, deleteEvent } from '../api/events';
 
 export interface Event {
   id: number;
@@ -20,19 +20,18 @@ export interface CreateEventData {
 }
 
 type EventFilter = 'all' | 'upcoming' | 'ongoing' | 'past';
-type ViewMode = 'card' | 'table';
 
 const Events: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [currentFilter, setCurrentFilter] = useState<EventFilter>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('card'); // Nouvel état
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [viewingEvent, setViewingEvent] = useState<Event | null>(null); // Pour la modale
+  const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null); // pour la modification
 
   const [newEvent, setNewEvent] = useState<CreateEventData>({
     title: '',
@@ -106,12 +105,12 @@ const Events: React.FC = () => {
 
   useEffect(() => {
     filterEvents(currentFilter);
-  }, [events]);
+  }, [events, currentFilter]);
 
   const hasManagementPermission = canManageContent(currentUser);
   const isAdmin = currentUser?.role?.name === 'admin';
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAddOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!newEvent.title.trim()) {
@@ -131,15 +130,37 @@ const Events: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const eventToCreate = {
+      const eventToSave = {
         ...newEvent,
         start_date: new Date(newEvent.start_date).toISOString(),
         end_date: new Date(newEvent.end_date).toISOString(),
       };
 
-      const createdEvent = await createEvent(eventToCreate);
-      const updatedEvents = [...events, createdEvent];
-      setEvents(updatedEvents);
+      if (editingEvent) {
+        // Mode modification
+        const updatedEvent = await updateEvent(editingEvent.id, eventToSave);
+        setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+        Swal.fire({
+          title: 'Succès',
+          text: 'Événement modifié avec succès',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        // Mode création
+        const createdEvent = await createEvent(eventToSave);
+        setEvents(prev => [...prev, createdEvent]);
+        Swal.fire({
+          title: 'Succès',
+          text: 'Événement créé avec succès',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
+
+      // Reset form
       setNewEvent({
         title: '',
         description: '',
@@ -147,23 +168,57 @@ const Events: React.FC = () => {
         end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
       });
       setShowForm(false);
+      setEditingEvent(null);
       setError(null);
     } catch (error: any) {
-      console.error('Failed to add event', error);
-
+      console.error('Failed to save event', error);
       if (error.response?.status === 401) {
         setError('Session expirée. Veuillez vous reconnecter.');
       } else if (error.response?.status === 403) {
-        setError('Vous n\'avez pas les permissions pour créer un événement');
+        setError('Vous n\'avez pas les permissions nécessaires');
       } else if (error.response?.status === 422) {
         setError('Données invalides. Vérifiez les champs du formulaire.');
       } else if (error.response?.data?.detail) {
         setError(`Erreur: ${error.response.data.detail}`);
       } else {
-        setError('Erreur lors de l\'ajout de l\'événement');
+        setError(editingEvent ? 'Erreur lors de la modification' : 'Erreur lors de la création');
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    const result = await Swal.fire({
+      title: 'Confirmation',
+      text: 'Êtes-vous sûr de vouloir supprimer cet événement ?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Oui, supprimer',
+      cancelButtonText: 'Annuler',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteEvent(id);
+        setEvents(prev => prev.filter(e => e.id !== id));
+        Swal.fire({
+          title: 'Supprimé',
+          text: 'L\'événement a été supprimé',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } catch (error: any) {
+        console.error('Failed to delete event', error);
+        Swal.fire({
+          title: 'Erreur',
+          text: error.response?.data?.detail || 'Impossible de supprimer l\'événement',
+          icon: 'error',
+        });
+      }
     }
   };
 
@@ -172,36 +227,21 @@ const Events: React.FC = () => {
     setNewEvent(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleEditClick = (event: Event) => {
+    setEditingEvent(event);
+    setNewEvent({
+      title: event.title,
+      description: event.description,
+      start_date: new Date(event.start_date).toISOString().slice(0, 16),
+      end_date: new Date(event.end_date).toISOString().slice(0, 16),
+    });
+    setShowForm(true);
+    setError(null);
+  };
+
   const handleReconnect = () => {
     localStorage.removeItem('ekklesia-token');
     window.location.href = '/login';
-  };
-
-  // Handlers pour les actions du tableau
-  const handleViewClick = (event: Event) => {
-    setViewingEvent(event);
-  };
-
-  const handleEditClick = (event: Event) => {
-    // Pour l'instant, fonction non implémentée (API manquante)
-    Swal.fire({
-      title: 'Information',
-      text: 'La modification d’événement n’est pas encore disponible.',
-      icon: 'info',
-      timer: 2000,
-      showConfirmButton: false,
-    });
-  };
-
-  const handleDeleteClick = async (id: number) => {
-    // Pour l'instant, fonction non implémentée (API manquante)
-    Swal.fire({
-      title: 'Information',
-      text: 'La suppression d’événement n’est pas encore disponible.',
-      icon: 'info',
-      timer: 2000,
-      showConfirmButton: false,
-    });
   };
 
   const formatDate = (dateString: string) => {
@@ -351,7 +391,17 @@ const Events: React.FC = () => {
 
             {hasManagementPermission && (
               <button
-                onClick={() => setShowForm(!showForm)}
+                onClick={() => {
+                  setEditingEvent(null);
+                  setNewEvent({
+                    title: '',
+                    description: '',
+                    start_date: new Date().toISOString().slice(0, 16),
+                    end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
+                  });
+                  setShowForm(!showForm);
+                  setError(null);
+                }}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,11 +448,11 @@ const Events: React.FC = () => {
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  <span>Nouvel Événement</span>
+                  <span>{editingEvent ? 'Modifier l\'événement' : 'Nouvel Événement'}</span>
                 </h4>
               </div>
 
-              <form onSubmit={handleAdd} className="p-6 space-y-6">
+              <form onSubmit={handleAddOrUpdate} className="p-6 space-y-6">
                 <div className="space-y-2">
                   <label htmlFor="title" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Titre de l'événement *
@@ -483,20 +533,23 @@ const Events: React.FC = () => {
                     {isSubmitting ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Création...</span>
+                        <span>{editingEvent ? 'Modification...' : 'Création...'}</span>
                       </>
                     ) : (
                       <>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>Créer l'événement</span>
+                        <span>{editingEvent ? 'Mettre à jour' : 'Créer l\'événement'}</span>
                       </>
                     )}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingEvent(null);
+                    }}
                     className="px-6 py-3 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors font-medium"
                   >
                     Annuler
@@ -518,7 +571,6 @@ const Events: React.FC = () => {
             </h2>
 
             <div className="flex space-x-2">
-              {/* Boutons de filtre */}
               <button
                 onClick={() => filterEvents('all')}
                 className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
@@ -559,40 +611,9 @@ const Events: React.FC = () => {
               >
                 Passés ({getEventCountByStatus('past')})
               </button>
-
-              {/* Sélecteur de vue */}
-              <div className="ml-4 flex border rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setViewMode('card')}
-                  className={`px-3 py-2 text-sm font-medium ${
-                    viewMode === 'card'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                  title="Vue cartes"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setViewMode('table')}
-                  className={`px-3 py-2 text-sm font-medium ${
-                    viewMode === 'table'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                  title="Vue tableau"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </button>
-              </div>
             </div>
           </div>
 
-          {/* Contenu conditionnel : cartes ou tableau */}
           {filteredEvents.length === 0 ? (
             <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
               <div className="max-w-md mx-auto">
@@ -636,68 +657,7 @@ const Events: React.FC = () => {
                 )}
               </div>
             </div>
-          ) : viewMode === 'card' ? (
-            /* Vue cartes existante */
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredEvents.map((event, index) => {
-                const status = getEventStatus(event.start_date, event.end_date);
-                return (
-                  <div
-                    key={event.id}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 transform hover:-translate-y-1 group"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <div className="flex justify-between items-start p-6 pb-4">
-                      <div className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(status)}`}>
-                        {getStatusText(status)}
-                      </div>
-                    </div>
-
-                    <div className="p-6 pt-0">
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2">{event.title}</h3>
-
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-300">
-                          <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-lg">
-                            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <div className="font-medium">Début</div>
-                            <div className="text-sm">
-                              {formatDate(event.start_date)} à {formatTime(event.start_date)}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-300">
-                          <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded-lg">
-                            <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <div className="font-medium">Fin</div>
-                            <div className="text-sm">
-                              {formatDate(event.end_date)} à {formatTime(event.end_date)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mb-4">
-                        <p className="text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
-                          {event.description || 'Aucune description disponible pour cet événement.'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           ) : (
-            /* Vue tableau */
             <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
@@ -748,9 +708,8 @@ const Events: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            {/* Voir */}
                             <button
-                              onClick={() => handleViewClick(event)}
+                              onClick={() => setViewingEvent(event)}
                               className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-gray-500"
                               title="Voir"
                               aria-label="Voir"
@@ -761,7 +720,6 @@ const Events: React.FC = () => {
                               </svg>
                             </button>
 
-                            {/* Modifier (si permission) */}
                             {hasManagementPermission && (
                               <button
                                 onClick={() => handleEditClick(event)}
@@ -775,10 +733,9 @@ const Events: React.FC = () => {
                               </button>
                             )}
 
-                            {/* Supprimer (admin seulement) */}
                             {isAdmin && (
                               <button
-                                onClick={() => handleDeleteClick(event.id)}
+                                onClick={() => handleDelete(event.id)}
                                 className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
                                 title="Supprimer"
                                 aria-label="Supprimer"
@@ -825,71 +782,120 @@ const Events: React.FC = () => {
 
         {/* Modale de visualisation */}
         {viewingEvent && (
-          <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <div
+            className="fixed inset-0 z-50 overflow-y-auto"
+            aria-labelledby="modal-title"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+              {/* Overlay avec flou */}
               <div
-                className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
                 aria-hidden="true"
                 onClick={() => setViewingEvent(null)}
               ></div>
-              <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
+
+              {/* Centreur */}
+              <span
+                className="hidden sm:inline-block sm:align-middle sm:h-screen"
+                aria-hidden="true"
+              >
                 &#8203;
               </span>
-              <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-4 flex justify-between items-center">
-                  <h3 className="text-lg font-medium text-white" id="modal-title">
-                    Détails de l'événement
-                  </h3>
+
+              {/* Modale */}
+              <div className="inline-block w-full max-w-2xl p-6 overflow-hidden text-left align-bottom transition-all transform bg-white dark:bg-gray-800 rounded-2xl shadow-2xl sm:my-8 sm:align-middle sm:p-8">
+                {/* Barre de dégradé en haut */}
+                <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+                
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white" id="modal-title">
+                      {viewingEvent.title}
+                    </h3>
+                    <div className="flex items-center mt-2 space-x-2">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(
+                          getEventStatus(viewingEvent.start_date, viewingEvent.end_date)
+                        )}`}
+                      >
+                        {getStatusText(getEventStatus(viewingEvent.start_date, viewingEvent.end_date))}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        ID: #{viewingEvent.id}
+                      </span>
+                    </div>
+                  </div>
                   <button
                     onClick={() => setViewingEvent(null)}
-                    className="text-white hover:text-gray-200 focus:outline-none"
+                    className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
-                <div className="px-6 py-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Titre</label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{viewingEvent.title}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
-                      {viewingEvent.description || 'Aucune description'}
+
+                {/* Description */}
+                <div className="mb-6">
+                  <h4 className="flex items-center mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Description
+                  </h4>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {viewingEvent.description || 'Aucune description fournie.'}
                     </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Début</label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                      {formatDate(viewingEvent.start_date)} à {formatTime(viewingEvent.start_date)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Fin</label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                      {formatDate(viewingEvent.end_date)} à {formatTime(viewingEvent.end_date)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Statut</label>
-                    <div className="mt-1">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${getStatusColor(
-                          getEventStatus(viewingEvent.start_date, viewingEvent.end_date)
-                        )}`}
-                      >
-                        {getStatusText(getEventStatus(viewingEvent.start_date, viewingEvent.end_date))}
-                      </span>
-                    </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-700 px-6 py-3 flex justify-end">
+
+                {/* Dates */}
+                <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                    <div className="flex items-center mb-2 text-blue-700 dark:text-blue-300">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-semibold">Début</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatDate(viewingEvent.start_date)}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {formatTime(viewingEvent.start_date)}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                    <div className="flex items-center mb-2 text-purple-700 dark:text-purple-300">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="font-semibold">Fin</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatDate(viewingEvent.end_date)}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {formatTime(viewingEvent.end_date)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Informations supplémentaires */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Créé par l'utilisateur #{viewingEvent.user_id}
+                  </div>
                   <button
-                    type="button"
                     onClick={() => setViewingEvent(null)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     Fermer
                   </button>

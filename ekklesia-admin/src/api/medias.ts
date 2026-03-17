@@ -10,13 +10,10 @@ export const getMedias = async (): Promise<any[]> => {
   }
 };
 
-export const createMedia = async (eventId: number, file: File, title?: string): Promise<any> => {
+export const createMedia = async (eventId: number, file: File): Promise<any> => {
   const formData = new FormData();
   formData.append('event_id', eventId.toString());
   formData.append('file', file);
-
-  // Ajouter le champ optionnel s'il est fourni
-  if (title) formData.append('title', title);
 
   try {
     const response = await axiosInstance.post('/api/v1/medias/', formData);
