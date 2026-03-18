@@ -51,7 +51,7 @@ const Sidebar: React.FC = () => {
     { to: '/events', icon: <Clapperboard size={20} />, label: 'Events', roles: ['admin', 'moderator'] },
     { to: '/medias', icon: <Film size={20} />, label: 'Medias', roles: ['admin', 'moderator'] },
     { to: '/contributions', icon: <HandHeart size={20} />, label: 'Contributions', roles: ['admin'] },
-    { to: '/livestreams', icon: <Radio size={20} />, label: 'Live Streams', roles: ['admin', 'moderator'] },
+    { to: '/videos', icon: <Radio size={20} />, label: 'Live Streams', roles: ['admin', 'moderator'] },
   ];
 
   // Filtrer les éléments accessibles selon le rôle
