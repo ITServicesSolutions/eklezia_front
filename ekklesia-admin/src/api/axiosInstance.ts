@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8000', // Remplacez par l'URL de votre API
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
 });
 
 // Intercepteur pour ajouter le token d'authentification

@@ -9,7 +9,8 @@ import {
   Film, 
   HandHeart, 
   Radio,
-  ChevronRight
+  ChevronRight,
+  Settings
 } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
@@ -52,6 +53,7 @@ const Sidebar: React.FC = () => {
     { to: '/medias', icon: <Film size={20} />, label: 'Medias', roles: ['admin', 'moderator'] },
     { to: '/contributions', icon: <HandHeart size={20} />, label: 'Contributions', roles: ['admin'] },
     { to: '/videos', icon: <Radio size={20} />, label: 'Live Streams', roles: ['admin', 'moderator'] },
+    { to: '/platforms', icon: <Settings size={20} />, label: 'Configuration Vidéo', roles: ['admin'] },
   ];
 
   // Filtrer les éléments accessibles selon le rôle

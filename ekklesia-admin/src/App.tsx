@@ -14,7 +14,8 @@ import ProgramTypes from './pages/programTypes';
 import Events from './pages/Events';
 import Medias from './pages/Medias';
 import Contributions from './pages/Contributions';
-import Videos from './pages/videos';
+import Videos from './pages/Videos';
+import PlatformsSettings from './pages/PlatformsSettings';
 import Profile from './pages/Profile';
 
 
@@ -47,6 +48,7 @@ const AppRoutes: React.FC = () => (
         <Route path="/medias" element={<Medias />} />
         <Route path="/contributions" element={<Contributions />} />
         <Route path="/videos" element={<Videos />} />
+        <Route path="/platforms" element={<PlatformsSettings />} />
       </Route>
     </Route>
   </Routes>
