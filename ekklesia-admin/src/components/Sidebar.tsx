@@ -26,7 +26,15 @@ const Sidebar: React.FC = () => {
         return;
       }
       try {
-        const res = await fetch('http://localhost:8000/api/v1/users/me', {
+        const baseURL =
+          import.meta.env.VITE_API_BASE_URL ??
+          import.meta.env.VITE_API_URL;
+
+        if (!baseURL) {
+          throw new Error('Missing VITE_API_BASE_URL (or VITE_API_URL) for backend requests.');
+        }
+
+        const res = await fetch(`${baseURL}/api/v1/users/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {

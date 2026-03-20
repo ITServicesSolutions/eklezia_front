@@ -38,7 +38,13 @@ const Medias: React.FC = () => {
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
   const [showMediaModal, setShowMediaModal] = useState(false);
 
-  const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const backendUrl =
+    import.meta.env.VITE_API_BASE_URL ??
+    import.meta.env.VITE_API_URL;
+
+  if (!backendUrl) {
+    throw new Error('Missing VITE_API_BASE_URL (or VITE_API_URL) for backend requests.');
+  }
 
   const fetchMedias = async () => {
     try {

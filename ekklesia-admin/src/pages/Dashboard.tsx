@@ -190,7 +190,13 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      const baseURL = 'http://localhost:8000';
+      const baseURL =
+        import.meta.env.VITE_API_BASE_URL ??
+        import.meta.env.VITE_API_URL;
+
+      if (!baseURL) {
+        throw new Error('Missing VITE_API_BASE_URL (or VITE_API_URL) for backend requests.');
+      }
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
