@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { getCurrentUser, canManageContent } from '../utils/auth';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../api/events';
+import Pagination from '../components/Pagination';
 
 export interface Event {
   id: number;
@@ -32,6 +33,9 @@ const Events: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null); // pour la modification
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 10;
 
   const [newEvent, setNewEvent] = useState<CreateEventData>({
     title: '',
@@ -106,6 +110,10 @@ const Events: React.FC = () => {
   useEffect(() => {
     filterEvents(currentFilter);
   }, [events, currentFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [currentFilter]);
 
   const hasManagementPermission = canManageContent(currentUser);
   const isAdmin = currentUser?.role?.name === 'admin';
@@ -301,6 +309,13 @@ const Events: React.FC = () => {
     if (status === 'all') return events.length;
     return events.filter(event => getEventStatus(event.start_date, event.end_date) === status).length;
   };
+
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / itemsPerPage));
+  const paginatedEvents = filteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(prev => Math.min(prev, totalPages));
+  }, [totalPages]);
 
   if (loading) {
     return (
@@ -658,7 +673,59 @@ const Events: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+            <div className="overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+              <div className="space-y-4 p-4 lg:hidden">
+                {paginatedEvents.map(event => {
+                  const status = getEventStatus(event.start_date, event.end_date);
+                  return (
+                    <div key={event.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">{event.title}</h3>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(status)}`}>
+                          {getStatusText(status)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{event.description || 'Aucune description'}</p>
+                      <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Debut</p>
+                          <p className="text-gray-900 dark:text-white">{formatShortDate(event.start_date)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatTime(event.start_date)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Fin</p>
+                          <p className="text-gray-900 dark:text-white">{formatShortDate(event.end_date)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatTime(event.end_date)}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button onClick={() => setViewingEvent(event)} className="rounded-lg p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:text-gray-400 dark:hover:text-gray-300" title="Voir" aria-label="Voir">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                        {hasManagementPermission && (
+                          <button onClick={() => handleEditClick(event)} className="rounded-lg p-2 text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-blue-400 dark:hover:text-blue-300" title="Modifier" aria-label="Modifier">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button onClick={() => handleDelete(event.id)} className="rounded-lg p-2 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400 dark:hover:text-red-300" title="Supprimer" aria-label="Supprimer">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hidden lg:block">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -683,7 +750,7 @@ const Events: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredEvents.map(event => {
+                  {paginatedEvents.map(event => {
                     const status = getEventStatus(event.start_date, event.end_date);
                     return (
                       <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -752,6 +819,15 @@ const Events: React.FC = () => {
                   })}
                 </tbody>
               </table>
+              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredEvents.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                itemLabel="evenements"
+              />
             </div>
           )}
         </div>

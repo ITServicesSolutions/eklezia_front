@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -19,17 +19,29 @@ import PlatformsSettings from './pages/PlatformsSettings';
 import Profile from './pages/Profile';
 
 
-const AdminLayout: React.FC = () => (
-  <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-    <Sidebar />
-    <div className="flex flex-col flex-1">
-      <Navbar />
-      <main className="h-full p-4 overflow-y-auto">
-        <Outlet />
-      </main>
+const AdminLayout: React.FC = () => {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const handleToggleMobileNav = useCallback(() => {
+    setMobileNavOpen((prev) => !prev);
+  }, []);
+  const handleCloseMobileNav = useCallback(() => {
+    setMobileNavOpen(false);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
+      <div className="flex min-h-screen flex-col">
+        <Navbar onToggleMenu={handleToggleMobileNav} />
+        <Sidebar mobileOpen={mobileNavOpen} onClose={handleCloseMobileNav} />
+        <main className="flex-1 overflow-x-hidden">
+          <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const AppRoutes: React.FC = () => (
   <Routes>

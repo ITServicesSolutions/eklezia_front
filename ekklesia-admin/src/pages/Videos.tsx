@@ -15,6 +15,7 @@ import {
   type PublicationPlatform,
 } from '../api/videos';
 import axiosInstance from '../api/axiosInstance';
+import Pagination from '../components/Pagination';
 
 const Videos: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
@@ -35,6 +36,7 @@ const Videos: React.FC = () => {
   const [showPublishForm, setShowPublishForm] = useState(false);
   const [selectedVideoToPublish, setSelectedVideoToPublish] = useState<Video | null>(null);
   const [publishDetails, setPublishDetails] = useState<Record<string, string>>({});
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Player Modal State
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
@@ -179,6 +181,14 @@ const Videos: React.FC = () => {
     });
   };
 
+  const itemsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(videos.length / itemsPerPage));
+  const paginatedVideos = videos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(prev => Math.min(prev, totalPages));
+  }, [totalPages]);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -313,7 +323,89 @@ const Videos: React.FC = () => {
       )}
 
       {/* Data Table */}
-      <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-100 dark:border-gray-700">
+      <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow dark:border-gray-700 dark:bg-gray-800">
+        <div className="space-y-4 p-4 lg:hidden">
+          {videos.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-500 dark:border-gray-600">
+              Aucun contenu trouve.
+            </div>
+          ) : (
+            paginatedVideos.map((v) => (
+              <div key={v.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+                <div className="flex items-start gap-4">
+                  <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-700">
+                    <button type="button" className="flex h-full w-full items-center justify-center" onClick={() => setSelectedVideo(v)}>
+                      {v.thumbnail_url ? <img src={v.thumbnail_url} alt="" className="h-full w-full object-cover" /> : <span className="text-xl">🎬</span>}
+                    </button>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-gray-900 dark:text-white">{v.title}</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{formatDate(v.uploaded_at)}</p>
+                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{v.description || 'Sans description.'}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {v.publications.length === 0 && <span className="text-xs italic text-gray-400">Non publie</span>}
+                  {v.publications.map(pub => (
+                    <span key={pub.id} className="rounded-full border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-800" title={pub.status}>
+                      {platforms.find(p => p.id === pub.platform_id)?.name || 'Platform'}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button onClick={() => setSelectedVideo(v)} className="text-indigo-600 hover:text-indigo-900 transition-colors" title="Voir">
+                    <Play size={18} />
+                  </button>
+                  {v.publications.length === 0 ? (
+                    <button
+                      onClick={() => {
+                        setSelectedVideoToPublish(v);
+                        let initialDetails = v.publications.length > 0 ? (v.publications[0].details || {}) : {};
+                        if (v.video_type === 'VOD' && v.publications.length === 0 && v.sources.length > 0) {
+                          const localUrl = v.sources[0].url;
+                          if (localUrl) {
+                            const urlField = platforms[0]?.config?.fields?.find((f: any) => f.type === 'url' || f.name.includes('url'));
+                            if (urlField) {
+                              const baseUrl = axiosInstance.defaults.baseURL || '';
+                              const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+                              const cleanPath = localUrl.startsWith('/') ? localUrl : `/${localUrl}`;
+                              initialDetails[urlField.name] = localUrl.startsWith('http') ? localUrl : `${cleanBase}${cleanPath}`;
+                            }
+                          }
+                        }
+                        setPublishDetails(initialDetails);
+                        setShowPublishForm(true);
+                      }}
+                      className="text-emerald-600 hover:text-emerald-900 transition-colors"
+                      title="Publier"
+                    >
+                      <Globe size={18} />
+                    </button>
+                  ) : (
+                    <div className="text-emerald-400" title="Deja publie">
+                      <Globe size={18} className="opacity-40" />
+                    </div>
+                  )}
+                  {v.video_type === 'LIVE' && v.status === 'DRAFT' && (
+                    <button onClick={() => handleStartLive(Number(v.id))} className="text-red-500 hover:text-red-700 transition-colors" title="Go Live">
+                      <Radio size={18} />
+                    </button>
+                  )}
+                  {v.video_type === 'LIVE' && v.status === 'READY' && (
+                    <button onClick={() => handleStopLive(Number(v.id))} className="text-red-600 hover:text-red-900 transition-colors" title="Arreter">
+                      <Square size={18} />
+                    </button>
+                  )}
+                  <button onClick={() => handleDelete(v.id)} className="text-gray-500 hover:text-red-600 transition-colors" title="Supprimer">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="hidden lg:block">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
@@ -325,7 +417,7 @@ const Videos: React.FC = () => {
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {videos.length === 0 ? (
                 <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">Aucun contenu trouvé.</td></tr>
-            ) : videos.map((v) => (
+            ) : paginatedVideos.map((v) => (
               <tr key={v.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="h-14 w-24 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden flex items-center justify-center relative cursor-pointer" onClick={() => setSelectedVideo(v)}>
@@ -414,6 +506,15 @@ const Videos: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={videos.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          itemLabel="contenus"
+        />
       </div>
 
       {/* Dynamic Player Modal */}

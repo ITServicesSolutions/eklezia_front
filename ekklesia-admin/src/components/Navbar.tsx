@@ -1,19 +1,31 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Bell,
+  Calendar,
+  FileText,
+  LogOut,
+  Menu,
+  Search,
+  Settings,
+  User,
+  Users,
+  X,
+} from 'lucide-react';
 import { getUsersMe } from '../api/users';
 import { logoutUser } from '../api/auth';
-import { LogOut, User, Settings, Bell, Search, Calendar, FileText, Users, X } from 'lucide-react';
 
 export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
+
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedValue(value), delay);
     return () => clearTimeout(handler);
   }, [value, delay]);
+
   return debouncedValue;
 }
 
-// Types
 interface Program {
   id: number;
   program_day: string;
@@ -44,7 +56,11 @@ interface CurrentUser {
   role: { name: string };
 }
 
-const Navbar: React.FC = () => {
+interface NavbarProps {
+  onToggleMenu: () => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ onToggleMenu }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -53,23 +69,22 @@ const Navbar: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const debouncedQuery = useDebounce(searchQuery, 400);
-
-  // États pour stocker toutes les données (chargement unique)
   const [allPrograms, setAllPrograms] = useState<Program[]>([]);
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [allUsers, setAllUsers] = useState<UserResult[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const debouncedQuery = useDebounce(searchQuery, 400);
 
-  // Récupération utilisateur + chargement de toutes les données
   useEffect(() => {
     const fetchAllData = async () => {
       try {
         setInitialLoading(true);
         const token = localStorage.getItem('ekklesia-token');
-        if (!token) throw new Error('Non authentifié.');
+        if (!token) {
+          throw new Error('Non authentifie.');
+        }
 
         const baseURL =
           import.meta.env.VITE_API_BASE_URL ??
@@ -79,25 +94,23 @@ const Navbar: React.FC = () => {
           throw new Error('Missing VITE_API_BASE_URL (or VITE_API_URL) for backend requests.');
         }
         const headers = {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         };
 
-        // Récupération utilisateur
         const userData = await getUsersMe();
         setUser(userData);
 
-        // Chargement de toutes les données pour la recherche
         const [programsRes, eventsRes, usersRes] = await Promise.all([
           fetch(`${baseURL}/api/v1/programs/`, { headers }),
           fetch(`${baseURL}/api/v1/events/`, { headers }),
-          fetch(`${baseURL}/api/v1/users/`, { headers })
+          fetch(`${baseURL}/api/v1/users/`, { headers }),
         ]);
 
         const [programs, events, users] = await Promise.all([
           programsRes.ok ? programsRes.json() : [],
           eventsRes.ok ? eventsRes.json() : [],
-          usersRes.ok ? usersRes.json() : []
+          usersRes.ok ? usersRes.json() : [],
         ]);
 
         setAllPrograms(Array.isArray(programs) ? programs : []);
@@ -105,7 +118,7 @@ const Navbar: React.FC = () => {
         setAllUsers(Array.isArray(users) ? users : []);
       } catch (error: any) {
         console.error('Failed to fetch data:', error);
-        if (error.response && error.response.status === 401) {
+        if (error.response?.status === 401) {
           navigate('/login');
         }
       } finally {
@@ -116,7 +129,6 @@ const Navbar: React.FC = () => {
     fetchAllData();
   }, [navigate]);
 
-  // Filtrage local des résultats en fonction de debouncedQuery
   useEffect(() => {
     if (!debouncedQuery.trim()) {
       setSearchResults({ programs: [], events: [], users: [] });
@@ -127,21 +139,14 @@ const Navbar: React.FC = () => {
     setIsSearching(true);
     const queryLower = debouncedQuery.toLowerCase();
 
-    // Filtrer les programmes (recherche dans description)
-    const filteredPrograms = allPrograms.filter(prog =>
-      prog.description.toLowerCase().includes(queryLower)
+    const filteredPrograms = allPrograms.filter((prog) => prog.description.toLowerCase().includes(queryLower));
+    const filteredEvents = allEvents.filter(
+      (event) =>
+        event.title.toLowerCase().includes(queryLower) || event.description.toLowerCase().includes(queryLower)
     );
-
-    // Filtrer les événements (recherche dans title et description)
-    const filteredEvents = allEvents.filter(event =>
-      event.title.toLowerCase().includes(queryLower) ||
-      event.description.toLowerCase().includes(queryLower)
-    );
-
-    // Filtrer les utilisateurs (recherche dans email et nom du rôle)
-    const filteredUsers = allUsers.filter(userItem =>
-      userItem.email.toLowerCase().includes(queryLower) ||
-      userItem.role.name.toLowerCase().includes(queryLower)
+    const filteredUsers = allUsers.filter(
+      (userItem) =>
+        userItem.email.toLowerCase().includes(queryLower) || userItem.role.name.toLowerCase().includes(queryLower)
     );
 
     setSearchResults({
@@ -152,22 +157,30 @@ const Navbar: React.FC = () => {
     setIsSearching(false);
   }, [debouncedQuery, allPrograms, allEvents, allUsers]);
 
-  // Fermeture du dropdown au clic extérieur
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowResults(false);
       }
+
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fermeture de la modal avec Echap
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsModalOpen(false);
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsModalOpen(false);
+        setShowResults(false);
+        setIsDropdownOpen(false);
+      }
     };
+
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
@@ -192,326 +205,294 @@ const Navbar: React.FC = () => {
   const closeModal = () => setIsModalOpen(false);
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-4 sm:px-6 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm dark:bg-gray-900/95 dark:border-gray-700">
-      {/* Logo + Titre */}
-      <div className="flex items-center space-x-3">
-        <div className="w-15 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-md">
-          <span className="text-white font-bold text-lg">EEAD-TU</span>
-        </div>
-        <div className="hidden sm:block">
-          <h1 className="text-base font-semibold text-gray-900 dark:text-white leading-tight">
-            Eglise Evangelique des Assemblees de Dieu
-          </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Temple Universitaire</p>
-        </div>
-      </div>
-
-      {/* Barre de recherche */}
-      <div ref={searchRef} className="flex-1 max-w-xl mx-4 relative">
-        <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Rechercher programmes, événements, utilisateurs..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setShowResults(true);
-            }}
-            onFocus={() => setShowResults(true)}
-            className="w-full pl-9 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl
-                     focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                     dark:bg-gray-800 dark:border-gray-600 dark:text-white
-                     transition-all duration-200 placeholder-gray-500 dark:placeholder-gray-400
-                     text-sm"
-          />
-          {searchQuery && (
+    <>
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                setSearchQuery('');
-                setSearchResults({ programs: [], events: [], users: [] });
-                setShowResults(false);
-              }}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              type="button"
+              onClick={onToggleMenu}
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 lg:hidden"
+              aria-label="Ouvrir le menu"
             >
-              <X size={16} />
+              <Menu size={20} />
             </button>
-          )}
-        </div>
 
-        {/* Dropdown des résultats */}
-        {showResults && (searchQuery.trim() !== '' || totalResults > 0) && (
-          <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 max-h-96 overflow-y-auto z-50">
-            {initialLoading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-              </div>
-            ) : isSearching ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-              </div>
-            ) : totalResults === 0 && searchQuery.trim() !== '' ? (
-              <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
-                Aucun résultat trouvé pour "{searchQuery}"
-              </div>
-            ) : (
-              <>
-                {/* Programmes */}
-                <div className="mb-2">
-                  <div className="px-4 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-700/50">
-                    Programmes ({searchResults.programs.length})
-                  </div>
-                  {searchResults.programs.length > 0 ? (
-                    searchResults.programs.map((program) => (
-                      <div
-                        key={`prog-${program.id}`}
-                        className="flex items-start w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-default"
-                      >
-                        <FileText size={16} className="mr-3 mt-0.5 text-blue-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {program.description.substring(0, 60)}...
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatDate(program.program_day)}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-4 py-2 text-sm text-gray-500 italic">Aucun programme trouvé</div>
-                  )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 min-w-[3.5rem] items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 px-3 text-sm font-bold text-white shadow-md sm:text-base">
+                  EEAD-TU
                 </div>
-
-                {/* Événements */}
-                <div className="mb-2">
-                  <div className="px-4 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-700/50">
-                    Événements ({searchResults.events.length})
-                  </div>
-                  {searchResults.events.length > 0 ? (
-                    searchResults.events.map((event) => (
-                      <div
-                        key={`evt-${event.id}`}
-                        className="flex items-start w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-default"
-                      >
-                        <Calendar size={16} className="mr-3 mt-0.5 text-green-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {event.title}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {formatDate(event.start_date)}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-4 py-2 text-sm text-gray-500 italic">Aucun événement trouvé</div>
-                  )}
+                <div className="min-w-0">
+                  <h1 className="truncate text-sm font-semibold text-slate-900 dark:text-white sm:text-base">
+                    Eglise Evangelique des Assemblees de Dieu
+                  </h1>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">Temple Universitaire</p>
                 </div>
+              </div>
+            </div>
 
-                {/* Utilisateurs */}
-                <div className="mb-2">
-                  <div className="px-4 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-700/50">
-                    Utilisateurs ({searchResults.users.length})
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button className="relative inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white">
+                <Bell size={18} />
+                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-white bg-red-500 dark:border-slate-900" />
+              </button>
+
+              <div ref={profileRef} className="relative">
+                <button
+                  onClick={() => setIsDropdownOpen((prev) => !prev)}
+                  className="flex min-h-[44px] items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-left transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                  <div className="hidden min-w-0 sm:block">
+                    <span className="block truncate text-sm font-medium text-slate-900 dark:text-white">
+                      {user?.email.split('@')[0] || 'Compte'}
+                    </span>
+                    <span className="block truncate text-xs text-slate-500 capitalize dark:text-slate-400">
+                      {user?.role.name || 'profil'}
+                    </span>
                   </div>
-                  {searchResults.users.length > 0 ? (
-                    searchResults.users.map((userItem) => (
-                      <div
-                        key={`user-${userItem.id}`}
-                        className="flex items-start w-full px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-default"
-                      >
-                        <Users size={16} className="mr-3 mt-0.5 text-purple-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {userItem.email}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                            {userItem.role.name}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="px-4 py-2 text-sm text-gray-500 italic">Aucun utilisateur trouvé</div>
-                  )}
-                </div>
+                  <div className="relative">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-md">
+                      <User size={18} className="text-white" />
+                    </div>
+                    <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-400 dark:border-slate-900" />
+                  </div>
+                </button>
 
-                {/* Lien vers la modal */}
-                {totalResults > 0 && (
-                  <button
-                    onClick={openModal}
-                    className="w-full mt-2 px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-center border-t border-gray-100 dark:border-gray-700"
-                  >
-                    Voir tous les résultats
-                  </button>
+                {isDropdownOpen && (
+                  <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white py-2 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                    <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-700">
+                      <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{user?.email}</p>
+                      <p className="text-xs text-slate-500 capitalize dark:text-slate-400">{user?.role.name}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsDropdownOpen(false);
+                        navigate('/profile');
+                      }}
+                      className="flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                      <Settings size={16} className="text-slate-400" />
+                      Parametres
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    >
+                      <LogOut size={16} />
+                      Deconnexion
+                    </button>
+                  </div>
                 )}
-              </>
+              </div>
+            </div>
+          </div>
+
+          <div ref={searchRef} className="relative w-full">
+            <div className="relative">
+              <Search
+                size={18}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="text"
+                placeholder="Rechercher programmes, evenements, utilisateurs..."
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setShowResults(true);
+                }}
+                onFocus={() => setShowResults(true)}
+                className="min-h-[48px] w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-11 text-sm text-slate-900 transition placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSearchResults({ programs: [], events: [], users: [] });
+                    setShowResults(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+                  aria-label="Effacer la recherche"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {showResults && (searchQuery.trim() !== '' || totalResults > 0) && (
+              <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-50 max-h-[min(70vh,28rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white py-2 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+                {initialLoading || isSearching ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-blue-500" />
+                  </div>
+                ) : totalResults === 0 && searchQuery.trim() !== '' ? (
+                  <div className="px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+                    Aucun resultat trouve pour "{searchQuery}"
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-2">
+                      <div className="bg-slate-50 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-700/50 dark:text-slate-400">
+                        Programmes ({searchResults.programs.length})
+                      </div>
+                      {searchResults.programs.length > 0 ? (
+                        searchResults.programs.map((program) => (
+                          <div
+                            key={`prog-${program.id}`}
+                            className="flex items-start gap-3 px-4 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-700"
+                          >
+                            <FileText size={16} className="mt-0.5 shrink-0 text-blue-500" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                                {program.description.substring(0, 60)}...
+                              </p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(program.program_day)}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-2 text-sm italic text-slate-500 dark:text-slate-400">Aucun programme trouve</div>
+                      )}
+                    </div>
+
+                    <div className="mb-2">
+                      <div className="bg-slate-50 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-700/50 dark:text-slate-400">
+                        Evenements ({searchResults.events.length})
+                      </div>
+                      {searchResults.events.length > 0 ? (
+                        searchResults.events.map((event) => (
+                          <div
+                            key={`evt-${event.id}`}
+                            className="flex items-start gap-3 px-4 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-700"
+                          >
+                            <Calendar size={16} className="mt-0.5 shrink-0 text-green-500" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{event.title}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(event.start_date)}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-2 text-sm italic text-slate-500 dark:text-slate-400">Aucun evenement trouve</div>
+                      )}
+                    </div>
+
+                    <div className="mb-2">
+                      <div className="bg-slate-50 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:bg-slate-700/50 dark:text-slate-400">
+                        Utilisateurs ({searchResults.users.length})
+                      </div>
+                      {searchResults.users.length > 0 ? (
+                        searchResults.users.map((userItem) => (
+                          <div
+                            key={`user-${userItem.id}`}
+                            className="flex items-start gap-3 px-4 py-2 transition hover:bg-slate-50 dark:hover:bg-slate-700"
+                          >
+                            <Users size={16} className="mt-0.5 shrink-0 text-purple-500" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{userItem.email}</p>
+                              <p className="text-xs capitalize text-slate-500 dark:text-slate-400">{userItem.role.name}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-2 text-sm italic text-slate-500 dark:text-slate-400">Aucun utilisateur trouve</div>
+                      )}
+                    </div>
+
+                    {totalResults > 0 && (
+                      <button
+                        onClick={openModal}
+                        className="mt-2 min-h-[44px] w-full border-t border-slate-100 px-4 py-2 text-center text-sm text-blue-600 transition hover:bg-blue-50 dark:border-slate-700 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                      >
+                        Voir tous les resultats
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Section utilisateur (inchangée) */}
-      <div className="flex items-center space-x-3">
-        <button className="relative p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white 
-                          hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-          <Bell size={20} />
-          <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white dark:border-gray-900 rounded-full"></span>
-        </button>
-
-        <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
-
-        {/* Profil */}
-        <div className="relative">
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
-          >
-            <div className="text-right hidden sm:block">
-              <span className="block text-sm font-medium text-gray-900 dark:text-white">
-                {user?.email.split('@')[0]}
-              </span>
-              <span className="block text-xs text-gray-500 dark:text-gray-400 capitalize">
-                {user?.role.name}
-              </span>
-            </div>
-            <div className="relative">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 
-                            flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                <User size={18} className="text-white" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-green-400 border-2 border-white dark:border-gray-900 rounded-full"></div>
-            </div>
-          </button>
-
-          {isDropdownOpen && (
-            <>
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg 
-                            border border-gray-200 dark:border-gray-700 py-2 z-50">
-                <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.email}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">{user?.role.name}</p>
-                </div>
-                <button 
-                  onClick={() => {
-                    setIsDropdownOpen(false);
-                    navigate('/profile');
-                  }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 
-                           hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  <Settings size={16} className="mr-3 text-gray-400" />
-                  Paramètres
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 
-                           hover:bg-red-50 dark:hover:bg-red-900/20"
-                >
-                  <LogOut size={16} className="mr-3" />
-                  Déconnexion
-                </button>
-              </div>
-              <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)}></div>
-            </>
-          )}
         </div>
-      </div>
+      </header>
 
-      {/* MODAL des résultats complets - centrage renforcé */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={closeModal}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm" onClick={closeModal}>
           <div
-            ref={modalRef}
-            className="relative w-full max-w-5xl max-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden m-auto" // m-auto ajouté
-            onClick={(e) => e.stopPropagation()}
+            className="relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800"
+            onClick={(event) => event.stopPropagation()}
           >
-            {/* En-tête */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Résultats pour "{searchQuery}"
-                <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-                  ({totalResults} résultat{totalResults > 1 ? 's' : ''})
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:px-6 dark:border-slate-700">
+              <h2 className="min-w-0 text-lg font-semibold text-slate-900 dark:text-white sm:text-xl">
+                <span className="block truncate">Resultats pour "{searchQuery}"</span>
+                <span className="mt-1 block text-sm font-normal text-slate-500 dark:text-slate-400">
+                  {totalResults} resultat{totalResults > 1 ? 's' : ''}
                 </span>
               </h2>
               <button
                 onClick={closeModal}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                aria-label="Fermer la fenetre"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {/* Corps : 3 colonnes */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-              {/* Programmes */}
-              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3 flex items-center">
-                  <FileText size={16} className="mr-2 text-blue-500" />
+            <div className="grid max-h-[calc(90vh-88px)] grid-cols-1 gap-4 overflow-y-auto p-4 sm:p-6 lg:grid-cols-3">
+              <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <FileText size={16} className="text-blue-500" />
                   Programmes ({searchResults.programs.length})
                 </h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                <div className="space-y-2">
                   {searchResults.programs.length > 0 ? (
                     searchResults.programs.map((program) => (
-                      <div key={program.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2">
-                          {program.description}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {formatDate(program.program_day)}
-                        </p>
+                      <div key={program.id} className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{program.description}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDate(program.program_day)}</p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500 italic">Aucun programme trouvé</p>
+                    <p className="text-sm italic text-slate-500 dark:text-slate-400">Aucun programme trouve</p>
                   )}
                 </div>
               </div>
 
-              {/* Événements */}
-              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3 flex items-center">
-                  <Calendar size={16} className="mr-2 text-green-500" />
-                  Événements ({searchResults.events.length})
+              <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <Calendar size={16} className="text-green-500" />
+                  Evenements ({searchResults.events.length})
                 </h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                <div className="space-y-2">
                   {searchResults.events.length > 0 ? (
                     searchResults.events.map((event) => (
-                      <div key={event.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{event.title}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
-                          {event.description}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {formatDate(event.start_date)}
-                        </p>
+                      <div key={event.id} className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{event.title}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{event.description}</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDate(event.start_date)}</p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500 italic">Aucun événement trouvé</p>
+                    <p className="text-sm italic text-slate-500 dark:text-slate-400">Aucun evenement trouve</p>
                   )}
                 </div>
               </div>
 
-              {/* Utilisateurs */}
-              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3 flex items-center">
-                  <Users size={16} className="mr-2 text-purple-500" />
+              <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/50">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <Users size={16} className="text-purple-500" />
                   Utilisateurs ({searchResults.users.length})
                 </h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                <div className="space-y-2">
                   {searchResults.users.length > 0 ? (
                     searchResults.users.map((userItem) => (
-                      <div key={userItem.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{userItem.email}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 capitalize mt-1">
-                          {userItem.role.name}
-                        </p>
+                      <div key={userItem.id} className="rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{userItem.email}</p>
+                        <p className="mt-1 text-xs capitalize text-slate-500 dark:text-slate-400">{userItem.role.name}</p>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-500 italic">Aucun utilisateur trouvé</p>
+                    <p className="text-sm italic text-slate-500 dark:text-slate-400">Aucun utilisateur trouve</p>
                   )}
                 </div>
               </div>
@@ -519,7 +500,7 @@ const Navbar: React.FC = () => {
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 };
 
