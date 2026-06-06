@@ -24,10 +24,10 @@ export const createLivestream = async (data: {
   start_date: string;
   video_url?: string;
 }): Promise<Livestream> => {
-  const response = await axiosInstance.post(
-    `/api/v1/livestreams/?title=${encodeURIComponent(data.title)}&description=${encodeURIComponent(data.description)}`,
-    { start_date: data.start_date, video_url: data.video_url || '' }
-  );
+  let url = `/api/v1/livestreams/?title=${encodeURIComponent(data.title)}&description=${encodeURIComponent(data.description || '')}`;
+  if (data.video_url) url += `&video_url=${encodeURIComponent(data.video_url)}`;
+  if (data.start_date) url += `&start_date=${encodeURIComponent(data.start_date)}`;
+  const response = await axiosInstance.post(url);
   return response.data;
 };
 
