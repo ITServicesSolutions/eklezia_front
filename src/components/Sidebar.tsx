@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import logo from '../assets/images/logo.jpeg';
 import {
   Calendar, Clapperboard, Film, HandHeart,
-  Settings2, Tags, UserCircle, Users, Video, X, LayoutDashboard,
+  Settings2, Tags, UserCircle, Users, Video, X, LayoutDashboard, Radio,
 } from 'lucide-react';
 import { getUsersMe } from '../api/users';
 
@@ -21,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/events',        icon: <Clapperboard size={18} />,    label: 'Événements'         },
   { to: '/medias',        icon: <Film size={18} />,            label: 'Médias'             },
   { to: '/contributions', icon: <HandHeart size={18} />,       label: 'Contributions'      },
+  { to: '/livestreams',   icon: <Radio size={18} />,           label: 'Direct'             },
   { to: '/videos',        icon: <Video size={18} />,           label: 'Vidéos'             },
   { to: '/platforms',     icon: <Settings2 size={18} />,       label: 'Plateformes'        },
   { to: '/profile',       icon: <UserCircle size={18} />,      label: 'Profil'             },
