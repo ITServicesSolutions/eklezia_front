@@ -3,7 +3,7 @@ import Swal from 'sweetalert2';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Globe, Radio, Square, Trash2, Video, UploadCloud, Eye, X,
-  Plus, Film, Activity,
+  Plus, Film, Activity, CheckCircle, Copy, Wifi, Youtube,
 } from 'lucide-react';
 import {
   fetchVideos,
@@ -42,12 +42,19 @@ const Videos: React.FC = () => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [creating, setCreating] = useState(false);
 
+  // LIVE sub-mode
+  const [liveMode, setLiveMode] = useState<'obs' | 'youtube'>('obs');
+  const [createObsRtmp, setCreateObsRtmp] = useState('rtmp://');
+  const [createObsHls, setCreateObsHls] = useState('http://');
+  const [createObsForwards, setCreateObsForwards] = useState<PlatformForward[]>([]);
+  const [createObsResult, setCreateObsResult] = useState<StreamInfo | null>(null);
+
   // Publish modal
   const [showPublishForm, setShowPublishForm] = useState(false);
   const [selectedVideoToPublish, setSelectedVideoToPublish] = useState<VideoType | null>(null);
   const [publishDetails, setPublishDetails] = useState<Record<string, string>>({});
 
-  // OBS stream setup modal
+  // OBS stream setup modal (on existing cards)
   const [showObsModal, setShowObsModal] = useState(false);
   const [obsVideo, setObsVideo] = useState<VideoType | null>(null);
   const [obsRtmpServer, setObsRtmpServer] = useState('rtmp://');
@@ -94,27 +101,65 @@ const Videos: React.FC = () => {
     e.preventDefault();
     setCreating(true);
     try {
-      let newVideo;
-      const youtubeId = youtubeUrl ? extractYoutubeId(youtubeUrl) : undefined;
-      if (videoType === 'LIVE' && !youtubeUrl) {
-        await createLiveStream({ title, description, start_date: startDate });
-      } else {
+      let newVideo: VideoType | undefined;
+
+      if (videoType === 'LIVE' && liveMode === 'obs') {
+        // 1. Create LIVE video
         newVideo = await createVideo({
           title,
           description,
           privacy_status: 'public',
+          video_type: 'LIVE',
+        });
+        // 2. Setup OBS stream inline
+        try {
+          const info = await setupObsStream(
+            newVideo.id,
+            createObsRtmp,
+            createObsHls,
+            createObsForwards,
+          );
+          setCreateObsResult(info);
+          showToast('Live OBS créé ! Configurez OBS avec la clé ci-dessous.', 'success');
+          loadData();
+        } catch {
+          showToast('Live créé, mais erreur de configuration OBS', 'error');
+          loadData();
+          resetForm();
+          setShowCreateForm(false);
+        }
+        return;
+      }
+
+      if (videoType === 'LIVE' && liveMode === 'youtube') {
+        const youtubeId = extractYoutubeId(youtubeUrl);
+        newVideo = await createVideo({
+          title,
+          description,
+          privacy_status: 'public',
+          video_type: 'LIVE',
+          youtube_id: youtubeId ?? undefined,
+          video_url: youtubeUrl || undefined,
+        });
+      } else if (videoType === 'LIVE' && !youtubeUrl) {
+        await createLiveStream({ title, description, start_date: startDate });
+      } else {
+        const youtubeId = youtubeUrl ? extractYoutubeId(youtubeUrl) : undefined;
+        newVideo = await createVideo({
+          title,
+          description,
+          privacy_status: privacy || 'public',
           video_type: videoType,
           youtube_id: youtubeId ?? undefined,
           video_url: youtubeUrl || undefined,
         });
       }
+
       if (videoType === 'VOD' && file && newVideo) {
         await uploadVideoSource(newVideo.id, file);
       }
-      if ((videoType === 'LIVE' || videoType === 'EXTERNAL') && youtubeUrl && newVideo) {
-        // youtube_id déjà envoyé lors de la création
-      }
-      showToast('Vidéo/Live créé avec succès', 'success');
+
+      showToast('Contenu créé avec succès', 'success');
       setShowCreateForm(false);
       resetForm();
       loadData();
@@ -186,12 +231,18 @@ const Videos: React.FC = () => {
 
   const addForward = () =>
     setObsForwards(prev => [...prev, { name: '', rtmp_url: '', stream_key: '' }]);
-
   const updateForward = (i: number, field: keyof PlatformForward, val: string) =>
     setObsForwards(prev => prev.map((f, idx) => idx === i ? { ...f, [field]: val } : f));
-
   const removeForward = (i: number) =>
     setObsForwards(prev => prev.filter((_, idx) => idx !== i));
+
+  // Helpers for inline OBS setup in creation modal
+  const addCreateForward = () =>
+    setCreateObsForwards(prev => [...prev, { name: '', rtmp_url: '', stream_key: '' }]);
+  const updateCreateForward = (i: number, field: keyof PlatformForward, val: string) =>
+    setCreateObsForwards(prev => prev.map((f, idx) => idx === i ? { ...f, [field]: val } : f));
+  const removeCreateForward = (i: number) =>
+    setCreateObsForwards(prev => prev.filter((_, idx) => idx !== i));
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -229,10 +280,20 @@ const Videos: React.FC = () => {
   const resetForm = () => {
     setTitle('');
     setDescription('');
-    setPrivacy('public');
+    setPrivacy('unlisted');
     setFile(null);
     setStartDate('');
     setYoutubeUrl('');
+    setLiveMode('obs');
+    setCreateObsRtmp('rtmp://');
+    setCreateObsHls('http://');
+    setCreateObsForwards([]);
+    setCreateObsResult(null);
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateForm(false);
+    resetForm();
   };
 
   const formatDate = (dateString: string) => {
@@ -267,7 +328,6 @@ const Videos: React.FC = () => {
     setShowPublishForm(true);
   };
 
-  // Filtered videos
   const filteredVideos = videos.filter(v => {
     const matchSearch = v.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchType = filterType === 'ALL' || v.video_type === filterType;
@@ -284,7 +344,6 @@ const Videos: React.FC = () => {
     setCurrentPage(prev => Math.min(prev, totalPages));
   }, [totalPages]);
 
-  // Stats
   const totalLive = videos.filter(v => v.video_type === 'LIVE' && v.status === 'READY').length;
   const totalPublished = videos.filter(v => v.publications.length > 0).length;
 
@@ -326,7 +385,7 @@ const Videos: React.FC = () => {
           </div>
           <button onClick={() => setShowCreateForm(true)} className="neo-btn-primary">
             <Play size={16} />
-            Nouvelle vidéo
+            Nouveau contenu
           </button>
         </motion.div>
 
@@ -404,7 +463,6 @@ const Videos: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Grid cards vidéos */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
               {paginatedVideos.map((v, i) => (
                 <motion.div
@@ -414,7 +472,6 @@ const Videos: React.FC = () => {
                   transition={{ duration: 0.3, delay: i * 0.04 }}
                   className="neo-card p-4 flex flex-col gap-3"
                 >
-                  {/* Thumbnail */}
                   <div
                     className="w-full h-36 rounded-xl overflow-hidden cursor-pointer flex items-center justify-center relative"
                     style={{ background: getTypeGradient(v.video_type) }}
@@ -429,7 +486,6 @@ const Videos: React.FC = () => {
                           : <Play size={32} className="text-white" />}
                       </div>
                     )}
-                    {/* Badge status */}
                     <div className="absolute top-2 right-2">
                       {v.video_type === 'LIVE' && v.status === 'READY' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
@@ -437,22 +493,15 @@ const Videos: React.FC = () => {
                           LIVE
                         </span>
                       ) : v.video_type === 'LIVE' ? (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">
-                          LIVE
-                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">LIVE</span>
                       ) : v.video_type === 'EXTERNAL' ? (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-neo-primary text-white">
-                          EXT
-                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-neo-primary text-white">EXT</span>
                       ) : (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">
-                          VOD
-                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-white/20 text-white">VOD</span>
                       )}
                     </div>
                   </div>
 
-                  {/* Titre + desc */}
                   <div className="flex-1">
                     <h3 className="font-bold text-neo-text leading-snug line-clamp-1">{v.title}</h3>
                     <p className="text-xs text-neo-text-secondary mt-1 line-clamp-2">
@@ -461,82 +510,36 @@ const Videos: React.FC = () => {
                     <p className="text-xs text-neo-text-secondary mt-1">{formatDate(v.uploaded_at)}</p>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-2 pt-1" style={{ borderTop: '1px solid #c5ccd4' }}>
-                    {/* Voir */}
-                    <button
-                      onClick={() => setSelectedVideo(v)}
-                      className="neo-icon-btn text-neo-primary"
-                      title="Voir"
-                    >
+                    <button onClick={() => setSelectedVideo(v)} className="neo-icon-btn text-neo-primary" title="Voir">
                       <Eye size={15} />
                     </button>
-
-                    {/* Publier */}
                     {v.publications.length === 0 ? (
-                      <button
-                        onClick={() => openPublishModal(v)}
-                        className="neo-icon-btn text-neo-success"
-                        title="Publier"
-                        style={{ color: '#48bb78' }}
-                      >
+                      <button onClick={() => openPublishModal(v)} className="neo-icon-btn" style={{ color: '#48bb78' }} title="Publier">
                         <Globe size={15} />
                       </button>
                     ) : (
-                      <div
-                        className="neo-icon-btn opacity-40 cursor-default"
-                        title="Déjà publié"
-                      >
+                      <div className="neo-icon-btn opacity-40 cursor-default" title="Déjà publié">
                         <Globe size={15} style={{ color: '#48bb78' }} />
                       </div>
                     )}
-
-                    {/* Config OBS */}
                     {v.video_type === 'LIVE' && (
-                      <button
-                        onClick={() => openObsModal(v)}
-                        className="neo-icon-btn"
-                        style={{ color: '#6c63ff' }}
-                        title="Configuration OBS"
-                      >
+                      <button onClick={() => openObsModal(v)} className="neo-icon-btn" style={{ color: '#6c63ff' }} title="Configuration OBS">
                         <Activity size={15} />
                       </button>
                     )}
-
-                    {/* Démarrer live */}
                     {v.video_type === 'LIVE' && v.status === 'DRAFT' && (
-                      <button
-                        onClick={() => handleStartLive(Number(v.id))}
-                        className="neo-icon-btn"
-                        style={{ color: '#fc5c7d' }}
-                        title="Démarrer le live"
-                      >
+                      <button onClick={() => handleStartLive(Number(v.id))} className="neo-icon-btn" style={{ color: '#fc5c7d' }} title="Démarrer le live">
                         <Radio size={15} />
                       </button>
                     )}
-
-                    {/* Arrêter live */}
                     {v.video_type === 'LIVE' && v.status === 'READY' && (
-                      <button
-                        onClick={() => handleStopLive(Number(v.id))}
-                        className="neo-icon-btn"
-                        style={{ color: '#fc5c7d' }}
-                        title="Arrêter le live"
-                      >
+                      <button onClick={() => handleStopLive(Number(v.id))} className="neo-icon-btn" style={{ color: '#fc5c7d' }} title="Arrêter le live">
                         <Square size={15} />
                       </button>
                     )}
-
-                    {/* Spacer */}
                     <div className="flex-1" />
-
-                    {/* Supprimer */}
-                    <button
-                      onClick={() => handleDelete(v.id)}
-                      className="neo-icon-btn"
-                      style={{ color: '#fc5c7d' }}
-                      title="Supprimer"
-                    >
+                    <button onClick={() => handleDelete(v.id)} className="neo-icon-btn" style={{ color: '#fc5c7d' }} title="Supprimer">
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -555,7 +558,7 @@ const Videos: React.FC = () => {
           </>
         )}
 
-        {/* ===== Modal — Créer vidéo ===== */}
+        {/* ===== Modal — Créer contenu ===== */}
         <AnimatePresence>
           {showCreateForm && (
             <motion.div
@@ -565,176 +568,450 @@ const Videos: React.FC = () => {
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
               style={{ background: 'rgba(45,55,72,0.45)', backdropFilter: 'blur(4px)' }}
-              onClick={() => setShowCreateForm(false)}
+              onClick={closeCreateModal}
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ duration: 0.25 }}
-                className="neo-card p-6 w-full max-w-lg"
+                className="neo-card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
                 onClick={e => e.stopPropagation()}
               >
+                {/* Header */}
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="neo-circle w-10 h-10 flex items-center justify-center">
-                      <Plus size={18} className="text-neo-primary" />
+                    <div
+                      className="neo-circle w-10 h-10 flex items-center justify-center"
+                      style={createObsResult ? { color: '#48bb78' } : {}}
+                    >
+                      {createObsResult
+                        ? <CheckCircle size={18} style={{ color: '#48bb78' }} />
+                        : <Plus size={18} className="text-neo-primary" />}
                     </div>
-                    <h2 className="text-xl font-bold text-neo-text">Nouveau contenu</h2>
+                    <h2 className="text-xl font-bold text-neo-text">
+                      {createObsResult ? 'Live OBS configuré !' : 'Nouveau contenu'}
+                    </h2>
                   </div>
-                  <button
-                    onClick={() => setShowCreateForm(false)}
-                    className="neo-icon-btn text-neo-text-secondary"
-                  >
+                  <button onClick={closeCreateModal} className="neo-icon-btn text-neo-text-secondary">
                     <X size={16} />
                   </button>
                 </div>
 
-                {/* Tabs VOD / LIVE */}
-                <div className="flex gap-2 mb-5">
-                  {(['VOD', 'LIVE', 'EXTERNAL'] as const).map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setVideoType(t)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-0 ${
-                        videoType === t ? 'bg-neo-primary text-white' : 'text-neo-text-secondary'
-                      }`}
-                      style={
-                        videoType === t
-                          ? { boxShadow: '4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff' }
-                          : { boxShadow: '4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff', background: '#e8ecef' }
-                      }
+                {/* ── Success: OBS stream key result ── */}
+                {createObsResult ? (
+                  <div className="space-y-4">
+                    <div
+                      className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
+                      style={{ background: 'rgba(72,187,120,0.1)', color: '#48bb78', border: '1px solid rgba(72,187,120,0.25)' }}
                     >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-
-                <form onSubmit={handleCreate} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
-                      Titre *
-                    </label>
-                    <input
-                      type="text" required
-                      className="neo-input"
-                      placeholder="Titre du contenu"
-                      value={title}
-                      onChange={e => setTitle(e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      className="neo-inset w-full px-4 py-2.5 text-neo-text text-sm resize-none outline-none"
-                      rows={3}
-                      placeholder="Description du contenu..."
-                      value={description}
-                      onChange={e => setDescription(e.target.value)}
-                    />
-                  </div>
-
-                  {videoType !== 'LIVE' && (
-                    <div>
-                      <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
-                        Confidentialité
-                      </label>
-                      <select
-                        className="neo-input"
-                        value={privacy}
-                        onChange={e => setPrivacy(e.target.value)}
-                      >
-                        <option value="unlisted">Non répertorié</option>
-                        <option value="public">Public</option>
-                        <option value="private">Privé</option>
-                      </select>
+                      <CheckCircle size={16} />
+                      Le live a été créé. Configurez OBS avec les informations ci-dessous.
                     </div>
-                  )}
 
-                  {(videoType === 'LIVE' || videoType === 'EXTERNAL') && (
-                    <div>
-                      <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
-                        URL YouTube (live ou vidéo)
-                      </label>
-                      <input
-                        type="url"
-                        className="neo-input"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={youtubeUrl}
-                        onChange={e => setYoutubeUrl(e.target.value)}
-                      />
-                      {youtubeUrl && extractYoutubeId(youtubeUrl) && (
-                        <p className="mt-1 text-xs text-neo-success">
-                          ✓ ID détecté : {extractYoutubeId(youtubeUrl)}
+                    {/* OBS settings */}
+                    <div className="neo-inset p-4 rounded-xl space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wider text-neo-text-secondary mb-2">
+                        OBS Studio → Paramètres → Flux
+                      </p>
+                      {[
+                        { label: 'Service', value: 'Personnalisé' },
+                        { label: 'URL du serveur', value: createObsResult.rtmp_ingest_url ?? '' },
+                        { label: 'Clé de stream', value: createObsResult.rtmp_stream_key ?? '' },
+                      ].map(row => (
+                        <div key={row.label} className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-neo-text w-28 flex-shrink-0">{row.label}</span>
+                          <code
+                            className="flex-1 text-xs px-2 py-1.5 rounded-lg break-all font-mono"
+                            style={{ background: 'rgba(108,99,255,0.08)', color: '#6c63ff' }}
+                          >
+                            {row.value || '—'}
+                          </code>
+                          {row.value && (
+                            <button
+                              className="neo-icon-btn flex-shrink-0"
+                              onClick={() => copyToClipboard(row.value)}
+                              title="Copier"
+                            >
+                              <Copy size={13} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* HLS URL */}
+                    {createObsResult.hls_url && (
+                      <div className="neo-inset p-3 rounded-xl">
+                        <p className="text-xs font-bold uppercase tracking-wider text-neo-text-secondary mb-2">
+                          URL de lecture HLS (mobile)
                         </p>
-                      )}
-                      {youtubeUrl && !extractYoutubeId(youtubeUrl) && (
-                        <p className="mt-1 text-xs text-neo-error">URL YouTube invalide</p>
-                      )}
-                    </div>
-                  )}
+                        <div className="flex items-center gap-2">
+                          <code
+                            className="flex-1 text-xs break-all font-mono"
+                            style={{ color: '#48bb78' }}
+                          >
+                            {createObsResult.hls_url}
+                          </code>
+                          <button
+                            className="neo-icon-btn flex-shrink-0"
+                            onClick={() => copyToClipboard(createObsResult.hls_url!)}
+                          >
+                            <Copy size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
-                  {videoType === 'LIVE' && !youtubeUrl && (
-                    <div>
-                      <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
-                        Date de début prévue
-                      </label>
-                      <input
-                        type="datetime-local"
-                        className="neo-input"
-                        value={startDate}
-                        onChange={e => setStartDate(e.target.value)}
-                      />
-                    </div>
-                  )}
+                    {/* Platform forwards */}
+                    {(createObsResult.platform_forwards ?? []).length > 0 && (
+                      <div className="neo-inset p-3 rounded-xl">
+                        <p className="text-xs font-bold uppercase tracking-wider text-neo-text-secondary mb-2">
+                          Config nginx-rtmp (push multi-plateformes)
+                        </p>
+                        <pre
+                          className="text-xs overflow-x-auto p-2 rounded-lg"
+                          style={{ background: 'rgba(108,99,255,0.05)', color: '#6c63ff' }}
+                        >
+                          {(createObsResult.platform_forwards ?? []).map((f: any) =>
+                            `push ${f.rtmp_url}/${f.stream_key};`
+                          ).join('\n')}
+                        </pre>
+                      </div>
+                    )}
 
-                  {videoType === 'VOD' && (
-                    <div>
-                      <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
-                        Fichier vidéo *
-                      </label>
-                      <label className="neo-inset p-6 flex flex-col items-center gap-2 cursor-pointer rounded-xl border-2 border-dashed border-transparent hover:border-neo-primary transition-colors">
-                        <UploadCloud size={28} className="text-neo-text-secondary" />
-                        <span className="text-sm text-neo-text-secondary">
-                          {file ? file.name : 'Cliquez pour sélectionner un fichier'}
-                        </span>
-                        <input
-                          type="file" accept="video/*" required
-                          className="sr-only"
-                          onChange={e => setFile(e.target.files?.[0] || null)}
-                        />
-                      </label>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3 pt-2">
-                    <button
-                      type="submit"
-                      disabled={creating}
-                      className="neo-btn-primary flex-1 justify-center"
-                    >
-                      {creating ? (
-                        <span className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Création...
-                        </span>
-                      ) : (
-                        'Créer'
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateForm(false)}
-                      className="neo-btn-ghost"
-                    >
-                      Annuler
+                    <button onClick={closeCreateModal} className="neo-btn-primary w-full justify-center">
+                      Fermer
                     </button>
                   </div>
-                </form>
+                ) : (
+                  /* ── Create form ── */
+                  <>
+                    {/* Tabs VOD / LIVE / EXTERNAL */}
+                    <div className="flex gap-2 mb-5">
+                      {(['VOD', 'LIVE', 'EXTERNAL'] as const).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setVideoType(t)}
+                          className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all duration-200 border-0 ${
+                            videoType === t ? 'bg-neo-primary text-white' : 'text-neo-text-secondary'
+                          }`}
+                          style={
+                            videoType === t
+                              ? { boxShadow: '4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff' }
+                              : { boxShadow: '4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff', background: '#e8ecef' }
+                          }
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+
+                    <form onSubmit={handleCreate} className="space-y-4">
+                      {/* Titre */}
+                      <div>
+                        <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
+                          Titre *
+                        </label>
+                        <input
+                          type="text" required
+                          className="neo-input"
+                          placeholder="Titre du contenu"
+                          value={title}
+                          onChange={e => setTitle(e.target.value)}
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
+                          Description
+                        </label>
+                        <textarea
+                          className="neo-inset w-full px-4 py-2.5 text-neo-text text-sm resize-none outline-none"
+                          rows={3}
+                          placeholder="Description du contenu..."
+                          value={description}
+                          onChange={e => setDescription(e.target.value)}
+                        />
+                      </div>
+
+                      {/* Confidentialité (VOD / EXTERNAL) */}
+                      {videoType !== 'LIVE' && (
+                        <div>
+                          <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
+                            Confidentialité
+                          </label>
+                          <select className="neo-input" value={privacy} onChange={e => setPrivacy(e.target.value)}>
+                            <option value="unlisted">Non répertorié</option>
+                            <option value="public">Public</option>
+                            <option value="private">Privé</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {/* EXTERNAL — YouTube URL */}
+                      {videoType === 'EXTERNAL' && (
+                        <div>
+                          <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
+                            URL YouTube / externe
+                          </label>
+                          <input
+                            type="url"
+                            className="neo-input"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            value={youtubeUrl}
+                            onChange={e => setYoutubeUrl(e.target.value)}
+                          />
+                          {youtubeUrl && extractYoutubeId(youtubeUrl) && (
+                            <p className="mt-1 text-xs" style={{ color: '#48bb78' }}>
+                              ✓ ID détecté : {extractYoutubeId(youtubeUrl)}
+                            </p>
+                          )}
+                          {youtubeUrl && !extractYoutubeId(youtubeUrl) && (
+                            <p className="mt-1 text-xs" style={{ color: '#fc5c7d' }}>URL YouTube invalide</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ── LIVE — sub-mode selector ── */}
+                      {videoType === 'LIVE' && (
+                        <>
+                          {/* Source selector */}
+                          <div>
+                            <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
+                              Source du live
+                            </label>
+                            <div className="flex gap-2">
+                              {([
+                                { key: 'obs',     icon: <Wifi size={14} />,     label: 'OBS / RTMP' },
+                                { key: 'youtube', icon: <Youtube size={14} />, label: 'YouTube Live' },
+                              ] as const).map(mode => (
+                                <button
+                                  key={mode.key}
+                                  type="button"
+                                  onClick={() => setLiveMode(mode.key)}
+                                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all duration-200 border-0"
+                                  style={
+                                    liveMode === mode.key
+                                      ? { background: '#fc5c7d', color: '#fff', boxShadow: '4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff' }
+                                      : { background: '#e8ecef', color: '#718096', boxShadow: '4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff' }
+                                  }
+                                >
+                                  {mode.icon}
+                                  {mode.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* OBS / RTMP mode */}
+                          {liveMode === 'obs' && (
+                            <>
+                              <div
+                                className="flex items-start gap-3 px-4 py-3 rounded-xl text-xs"
+                                style={{ background: 'rgba(108,99,255,0.07)', color: '#6c63ff', border: '1px solid rgba(108,99,255,0.15)' }}
+                              >
+                                <Activity size={14} className="mt-0.5 flex-shrink-0" />
+                                <span>
+                                  Renseignez l'URL de votre serveur RTMP (nginx-rtmp, SRS, Mux…).
+                                  Une clé de stream unique sera générée à la création.
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-1">
+                                    URL RTMP *
+                                  </label>
+                                  <input
+                                    className="neo-input text-sm"
+                                    placeholder="rtmp://mon-serveur.com/live"
+                                    value={createObsRtmp}
+                                    onChange={e => setCreateObsRtmp(e.target.value)}
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-1">
+                                    Base HLS
+                                  </label>
+                                  <input
+                                    className="neo-input text-sm"
+                                    placeholder="http://mon-serveur.com/hls"
+                                    value={createObsHls}
+                                    onChange={e => setCreateObsHls(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Platform forwards */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <label className="text-xs font-semibold text-neo-text-secondary uppercase tracking-wider">
+                                    Diffuser aussi sur
+                                  </label>
+                                  <button
+                                    type="button"
+                                    className="neo-btn-ghost text-xs !py-1 !px-3"
+                                    onClick={addCreateForward}
+                                  >
+                                    <Plus size={12} /> Ajouter
+                                  </button>
+                                </div>
+
+                                {/* Quick presets */}
+                                <div className="flex gap-2 mb-2">
+                                  {[
+                                    { name: 'YouTube',  rtmp_url: 'rtmp://a.rtmp.youtube.com/live2',              stream_key: '' },
+                                    { name: 'Facebook', rtmp_url: 'rtmps://live-api-s.facebook.com:443/rtmp',     stream_key: '' },
+                                  ].map(preset => (
+                                    <button
+                                      key={preset.name}
+                                      type="button"
+                                      className="neo-btn-ghost text-xs !py-1 !px-3"
+                                      onClick={() => setCreateObsForwards(p => [...p, { ...preset }])}
+                                    >
+                                      + {preset.name}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                {createObsForwards.map((f, i) => (
+                                  <div key={i} className="neo-inset p-3 space-y-2 rounded-xl mb-2">
+                                    <div className="flex gap-2">
+                                      <input
+                                        className="neo-input text-xs flex-1"
+                                        placeholder="Nom (YouTube, Facebook…)"
+                                        value={f.name}
+                                        onChange={e => updateCreateForward(i, 'name', e.target.value)}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="neo-icon-btn flex-shrink-0"
+                                        onClick={() => removeCreateForward(i)}
+                                      >
+                                        <X size={14} />
+                                      </button>
+                                    </div>
+                                    <input
+                                      className="neo-input text-xs"
+                                      placeholder="URL RTMP de la plateforme"
+                                      value={f.rtmp_url}
+                                      onChange={e => updateCreateForward(i, 'rtmp_url', e.target.value)}
+                                    />
+                                    <input
+                                      className="neo-input text-xs"
+                                      placeholder="Clé de stream (YouTube Studio, Meta…)"
+                                      value={f.stream_key}
+                                      onChange={e => updateCreateForward(i, 'stream_key', e.target.value)}
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+
+                          {/* YouTube Live mode */}
+                          {liveMode === 'youtube' && (
+                            <>
+                              <div
+                                className="flex items-start gap-3 px-4 py-3 rounded-xl text-xs"
+                                style={{ background: 'rgba(252,92,125,0.07)', color: '#fc5c7d', border: '1px solid rgba(252,92,125,0.15)' }}
+                              >
+                                <Youtube size={14} className="mt-0.5 flex-shrink-0" />
+                                <span>
+                                  Collez l'URL de votre live YouTube. Le stream sera embedé dans
+                                  l'application mobile pour vos fidèles.
+                                </span>
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
+                                  URL YouTube Live *
+                                </label>
+                                <input
+                                  type="url"
+                                  className="neo-input"
+                                  placeholder="https://www.youtube.com/watch?v=..."
+                                  value={youtubeUrl}
+                                  onChange={e => setYoutubeUrl(e.target.value)}
+                                  required
+                                />
+                                {youtubeUrl && extractYoutubeId(youtubeUrl) && (
+                                  <p className="mt-1 text-xs" style={{ color: '#48bb78' }}>
+                                    ✓ ID détecté : {extractYoutubeId(youtubeUrl)}
+                                  </p>
+                                )}
+                                {youtubeUrl && !extractYoutubeId(youtubeUrl) && (
+                                  <p className="mt-1 text-xs" style={{ color: '#fc5c7d' }}>
+                                    URL YouTube invalide
+                                  </p>
+                                )}
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
+                                  Date de début prévue
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  className="neo-input"
+                                  value={startDate}
+                                  onChange={e => setStartDate(e.target.value)}
+                                />
+                              </div>
+                            </>
+                          )}
+                        </>
+                      )}
+
+                      {/* VOD file upload */}
+                      {videoType === 'VOD' && (
+                        <div>
+                          <label className="block text-xs font-semibold text-neo-text-secondary uppercase tracking-wider mb-2">
+                            Fichier vidéo *
+                          </label>
+                          <label className="neo-inset p-6 flex flex-col items-center gap-2 cursor-pointer rounded-xl border-2 border-dashed border-transparent hover:border-neo-primary transition-colors">
+                            <UploadCloud size={28} className="text-neo-text-secondary" />
+                            <span className="text-sm text-neo-text-secondary">
+                              {file ? file.name : 'Cliquez pour sélectionner un fichier'}
+                            </span>
+                            <input
+                              type="file" accept="video/*" required
+                              className="sr-only"
+                              onChange={e => setFile(e.target.files?.[0] || null)}
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-3 pt-2">
+                        <button
+                          type="submit"
+                          disabled={creating}
+                          className="neo-btn-primary flex-1 justify-center"
+                        >
+                          {creating ? (
+                            <span className="flex items-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              {videoType === 'LIVE' && liveMode === 'obs' ? 'Création & configuration…' : 'Création…'}
+                            </span>
+                          ) : (
+                            videoType === 'LIVE' && liveMode === 'obs'
+                              ? <><Activity size={15} /> Créer &amp; configurer OBS</>
+                              : 'Créer'
+                          )}
+                        </button>
+                        <button type="button" onClick={closeCreateModal} className="neo-btn-ghost">
+                          Annuler
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                )}
               </motion.div>
             </motion.div>
           )}
@@ -772,10 +1049,7 @@ const Videos: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setShowPublishForm(false)}
-                    className="neo-icon-btn text-neo-text-secondary"
-                  >
+                  <button onClick={() => setShowPublishForm(false)} className="neo-icon-btn text-neo-text-secondary">
                     <X size={16} />
                   </button>
                 </div>
@@ -788,8 +1062,7 @@ const Videos: React.FC = () => {
                   {platforms.length > 0
                     && platforms[0].config?.fields
                       ?.filter((f: any) =>
-                        !f.target_type
-                        || f.target_type === 'ALL'
+                        !f.target_type || f.target_type === 'ALL'
                         || f.target_type === selectedVideoToPublish.video_type
                       )
                       .map((f: any) => (
@@ -826,11 +1099,7 @@ const Videos: React.FC = () => {
                     <button type="submit" className="neo-btn-primary flex-1 justify-center">
                       Confirmer la publication
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowPublishForm(false)}
-                      className="neo-btn-ghost"
-                    >
+                    <button type="button" onClick={() => setShowPublishForm(false)} className="neo-btn-ghost">
                       Fermer
                     </button>
                   </div>
@@ -863,14 +1132,9 @@ const Videos: React.FC = () => {
                 <div className="flex items-center justify-between mb-4 pb-4" style={{ borderBottom: '1px solid #c5ccd4' }}>
                   <h2 className="text-lg font-bold text-neo-text truncate pr-8 flex items-center gap-2">
                     {selectedVideo.title}
-                    <span className="text-xs text-neo-text-secondary font-normal">
-                      {selectedVideo.video_type}
-                    </span>
+                    <span className="text-xs text-neo-text-secondary font-normal">{selectedVideo.video_type}</span>
                   </h2>
-                  <button
-                    onClick={() => setSelectedVideo(null)}
-                    className="neo-icon-btn text-neo-text-secondary flex-shrink-0"
-                  >
+                  <button onClick={() => setSelectedVideo(null)} className="neo-icon-btn text-neo-text-secondary flex-shrink-0">
                     <X size={16} />
                   </button>
                 </div>
@@ -959,7 +1223,6 @@ const Videos: React.FC = () => {
                   })()}
                 </div>
 
-                {/* Sources info */}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {selectedVideo.sources.map(s => (
                     <span key={s.id} className="neo-inset px-3 py-1 text-xs text-neo-text-secondary">
@@ -980,7 +1243,7 @@ const Videos: React.FC = () => {
 
       </div>
 
-      {/* ── Modale OBS Stream ── */}
+      {/* ── Modale OBS Stream (sur cartes existantes) ── */}
       <AnimatePresence>
         {showObsModal && obsVideo && (
           <motion.div
@@ -1003,7 +1266,6 @@ const Videos: React.FC = () => {
                   <button className="neo-icon-btn" onClick={() => setShowObsModal(false)}><X size={18}/></button>
                 </div>
 
-                {/* Étape 1 — Serveur RTMP */}
                 <div className="space-y-4 mb-6">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-neo-text-secondary">1. Serveur de réception</h3>
                   <div className="grid grid-cols-2 gap-3">
@@ -1022,14 +1284,11 @@ const Videos: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Étape 2 — Plateformes */}
                 <div className="space-y-3 mb-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-neo-text-secondary">2. Diffusion multi-plateformes</h3>
                     <button className="neo-btn-ghost text-xs !py-1 !px-3" onClick={addForward}><Plus size={14}/> Ajouter</button>
                   </div>
-
-                  {/* Préréglages rapides */}
                   <div className="flex gap-2 flex-wrap">
                     {[
                       { name: 'YouTube', rtmp_url: 'rtmp://a.rtmp.youtube.com/live2', stream_key: '' },
@@ -1043,7 +1302,6 @@ const Videos: React.FC = () => {
                       </button>
                     ))}
                   </div>
-
                   {obsForwards.map((f, i) => (
                     <div key={i} className="neo-inset p-3 space-y-2 rounded-xl">
                       <div className="flex gap-2">
@@ -1060,10 +1318,11 @@ const Videos: React.FC = () => {
                 </div>
 
                 <button className="neo-btn-primary w-full justify-center mb-6" onClick={handleObsSetup} disabled={obsLoading}>
-                  {obsLoading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Génération…</> : <><Activity size={16}/> Générer la clé de stream</>}
+                  {obsLoading
+                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Génération…</>
+                    : <><Activity size={16}/> Générer la clé de stream</>}
                 </button>
 
-                {/* Résultat — info OBS */}
                 {streamInfo && (
                   <div className="space-y-3">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-neo-text-secondary">3. Configurer OBS Studio</h3>
@@ -1078,22 +1337,20 @@ const Videos: React.FC = () => {
                           <span className="text-xs font-semibold text-neo-text w-32">{row.label}</span>
                           <code className="flex-1 text-xs bg-neo-primary/10 text-neo-primary px-2 py-1 rounded-lg break-all">{row.value}</code>
                           <button className="neo-icon-btn flex-shrink-0" onClick={() => copyToClipboard(row.value)} title="Copier">
-                            <Eye size={13}/>
+                            <Copy size={13}/>
                           </button>
                         </div>
                       ))}
                     </div>
-
                     {streamInfo.hls_url && (
                       <div className="neo-inset p-3 rounded-xl">
                         <p className="text-xs font-semibold text-neo-text-secondary uppercase mb-2">URL de lecture HLS (mobile)</p>
                         <div className="flex items-center gap-2">
                           <code className="flex-1 text-xs text-neo-success break-all">{streamInfo.hls_url}</code>
-                          <button className="neo-icon-btn flex-shrink-0" onClick={() => copyToClipboard(streamInfo.hls_url!)}><Eye size={13}/></button>
+                          <button className="neo-icon-btn flex-shrink-0" onClick={() => copyToClipboard(streamInfo.hls_url!)}><Copy size={13}/></button>
                         </div>
                       </div>
                     )}
-
                     {(streamInfo.platform_forwards ?? []).length > 0 && (
                       <div className="neo-inset p-3 rounded-xl space-y-2">
                         <p className="text-xs font-semibold text-neo-text-secondary uppercase mb-1">Config nginx-rtmp (push)</p>
