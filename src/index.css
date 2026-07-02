@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-size: clamp(14px, 0.2vw + 13px, 16px);
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply overflow-x-hidden bg-neo-bg text-neo-text antialiased;
+  }
+
+  img,
+  video,
+  iframe {
+    max-width: 100%;
+  }
+
+  img,
+  video {
+    height: auto;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+/* Hide scrollbar for carousel rows */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+@layer components {
+  /* Neomorphism Cards */
+  .neo-card {
+    @apply bg-neo-bg rounded-2xl;
+    box-shadow: 8px 8px 16px #c5ccd4, -8px -8px 16px #ffffff;
+  }
+
+  .neo-card-sm {
+    @apply bg-neo-bg rounded-xl;
+    box-shadow: 4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff;
+  }
+
+  /* Inset effect */
+  .neo-inset {
+    @apply bg-neo-bg rounded-xl;
+    box-shadow: inset 4px 4px 8px #c5ccd4, inset -4px -4px 8px #ffffff;
+  }
+
+  /* Circles */
+  .neo-circle {
+    @apply bg-neo-bg rounded-full;
+    box-shadow: 4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff;
+  }
+
+  /* Input / Select */
+  .neo-input {
+    @apply w-full px-4 py-2.5 bg-neo-bg text-neo-text rounded-xl border-0 outline-none transition-all duration-200;
+    box-shadow: inset 4px 4px 8px #c5ccd4, inset -4px -4px 8px #ffffff;
+  }
+
+  .neo-input:focus {
+    box-shadow: inset 4px 4px 8px #c5ccd4, inset -4px -4px 8px #ffffff, 0 0 0 2px #6c63ff55;
+  }
+
+  .neo-input::placeholder {
+    @apply text-neo-text-secondary;
+  }
+
+  /* Primary Button */
+  .neo-btn-primary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 bg-neo-primary text-white font-semibold rounded-xl cursor-pointer transition-all duration-200 border-0;
+    box-shadow: 4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff;
+  }
+
+  .neo-btn-primary:hover {
+    @apply bg-neo-primary-dark;
+    box-shadow: 2px 2px 5px #c5ccd4, -2px -2px 5px #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .neo-btn-primary:active {
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.15);
+    transform: translateY(0);
+  }
+
+  .neo-btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    transform: none;
+  }
+
+  /* Ghost Button */
+  .neo-btn-ghost {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 bg-neo-bg text-neo-text font-semibold rounded-xl cursor-pointer transition-all duration-200 border-0;
+    box-shadow: 4px 4px 8px #c5ccd4, -4px -4px 8px #ffffff;
+  }
+
+  .neo-btn-ghost:hover {
+    @apply text-neo-primary;
+    box-shadow: 2px 2px 5px #c5ccd4, -2px -2px 5px #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .neo-btn-ghost:active {
+    box-shadow: inset 2px 2px 5px #c5ccd4, inset -2px -2px 5px #ffffff;
+    transform: translateY(0);
+  }
+
+  /* Icon Button */
+  .neo-icon-btn {
+    @apply inline-flex items-center justify-center w-9 h-9 bg-neo-bg rounded-xl cursor-pointer transition-all duration-200 border-0;
+    box-shadow: 3px 3px 6px #c5ccd4, -3px -3px 6px #ffffff;
+  }
+
+  .neo-icon-btn:hover {
+    box-shadow: 1px 1px 3px #c5ccd4, -1px -1px 3px #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .neo-icon-btn:active {
+    box-shadow: inset 2px 2px 5px #c5ccd4, inset -2px -2px 5px #ffffff;
+    transform: translateY(0);
+  }
+}
