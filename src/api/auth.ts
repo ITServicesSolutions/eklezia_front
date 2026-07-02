@@ -45,8 +45,7 @@ export const loginUser = async (credentials: { username: string; password: strin
     if (error.response?.status === 401) {
       throw new Error('Email ou mot de passe incorrect');
     } else if (error.response?.status === 403) {
-      // Message spécifique pour les utilisateurs non autorisés sur web
-      throw new Error('Vous n\'êtes pas autorisé à accéder à l\'application web. Veuillez utiliser l\'application mobile.');
+      throw new Error('Accès refusé.');
     } else if (error.response?.status === 404) {
       throw new Error('Endpoint non trouvé. Vérifiez l\'URL de l\'API.');
     } else {

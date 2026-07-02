@@ -18,6 +18,16 @@ import LiveStreams from './pages/LiveStreams';
 import Videos from './pages/Videos';
 import PlatformsSettings from './pages/PlatformsSettings';
 import Profile from './pages/Profile';
+import VerseOfDay from './pages/VerseOfDay';
+import Motivations from './pages/Motivations';
+import WeeklyEmission from './pages/WeeklyEmission';
+import SalvationPage from './pages/SalvationPage';
+import SalvationCalls from './pages/SalvationCalls';
+import LivePage from './pages/LivePage';
+import DonsPage from './pages/DonsPage';
+import PublicHome from './pages/PublicHome';
+import PastorPage from './pages/PastorPage';
+import VersetsPage from './pages/VersetsPage';
 
 const AdminLayout: React.FC = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -39,10 +49,21 @@ const AdminLayout: React.FC = () => {
 
 const AppRoutes: React.FC = () => (
   <Routes>
+    {/* Pages publiques (sans connexion) */}
+    <Route path="/home" element={<PublicHome />} />
+    <Route path="/contact" element={<PastorPage />} />
+    <Route path="/versets" element={<VersetsPage />} />
+    <Route path="/appel-au-salut" element={<SalvationPage />} />
+    <Route path="/direct"         element={<LivePage />} />
+    <Route path="/dons"           element={<DonsPage />} />
+
+    {/* Auth */}
     <Route path="/login" element={<Login />} />
     <Route path="/register" element={<Register />} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
     <Route path="/reset-password" element={<ResetPassword />} />
+
+    {/* Pages admin (connexion requise) */}
     <Route element={<PrivateRoute />}>
       <Route element={<AdminLayout />}>
         <Route path="/" element={<Dashboard />} />
@@ -56,6 +77,10 @@ const AppRoutes: React.FC = () => (
         <Route path="/livestreams" element={<LiveStreams />} />
         <Route path="/videos" element={<Videos />} />
         <Route path="/platforms" element={<PlatformsSettings />} />
+        <Route path="/verse-of-day" element={<VerseOfDay />} />
+        <Route path="/motivations" element={<Motivations />} />
+        <Route path="/salvation-calls" element={<SalvationCalls />} />
+        <Route path="/weekly-emission" element={<WeeklyEmission />} />
       </Route>
     </Route>
   </Routes>

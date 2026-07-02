@@ -36,6 +36,10 @@
   }
 }
 
+/* Hide scrollbar for carousel rows */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 @layer components {
   /* Neomorphism Cards */
   .neo-card {

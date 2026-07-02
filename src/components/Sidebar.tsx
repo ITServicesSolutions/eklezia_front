@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import logo from '../assets/images/logo.jpeg';
 import {
   Calendar, Clapperboard, Film, HandHeart,
-  Settings2, Tags, UserCircle, Users, Video, X, LayoutDashboard, Radio,
+  Settings2, Tags, UserCircle, Users, Video, X, LayoutDashboard, Radio, BookOpen, Sparkles, Tv2, Heart,
 } from 'lucide-react';
 import { getUsersMe } from '../api/users';
 
@@ -23,6 +23,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/contributions', icon: <HandHeart size={18} />,       label: 'Contributions'      },
   { to: '/livestreams',   icon: <Radio size={18} />,           label: 'Direct'             },
   { to: '/videos',        icon: <Video size={18} />,           label: 'Vidéos'             },
+  { to: '/verse-of-day',      icon: <BookOpen size={18} />,  label: 'Verset du jour'      },
+  { to: '/motivations',       icon: <Sparkles size={18} />,  label: 'Motivations'         },
+  { to: '/salvation-calls',  icon: <Heart size={18} />,     label: 'Appel au salut'      },
+  { to: '/weekly-emission',   icon: <Tv2 size={18} />,       label: 'Émission semaine'    },
   { to: '/platforms',     icon: <Settings2 size={18} />,       label: 'Plateformes'        },
   { to: '/profile',       icon: <UserCircle size={18} />,      label: 'Profil'             },
 ];
