@@ -12,11 +12,13 @@ const counterSlice = createSlice({
   reducers: {},
 });
 
+
 const store = configureStore({
   reducer: {
     counter: counterSlice.reducer,
   },
 });
+
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
