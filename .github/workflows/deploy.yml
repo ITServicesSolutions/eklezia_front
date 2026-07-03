@@ -37,6 +37,7 @@ jobs:
           SERVER=$(echo "$SERVER" | xargs)
           echo "server=$SERVER" >> $GITHUB_OUTPUT
 
+          
       - name: 📂 Deploy via FTP (No deletion)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         env:
