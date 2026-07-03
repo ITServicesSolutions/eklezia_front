@@ -3,6 +3,7 @@ name: Deploy Eklezia Front
 on:
   push:
     branches:
+      - main
       - feature-solv
   workflow_dispatch: # Permet de lancer le déploiement manuellement depuis GitHub Actions
 
