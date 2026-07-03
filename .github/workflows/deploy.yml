@@ -27,12 +27,22 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: 🧹 Clean FTP Server URL
+        id: clean_ftp
+        run: |
+          SERVER="${{ secrets.FTP_SERVER }}"
+          # Supprimer les préfixes éventuels (ftp://, ftps://, http://, https://)
+          SERVER=${SERVER#*://}
+          # Enlever les espaces avant/après
+          SERVER=$(echo "$SERVER" | xargs)
+          echo "server=$SERVER" >> $GITHUB_OUTPUT
+
       - name: 📂 Deploy via FTP (No deletion)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         env:
           ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          server: ${{ steps.clean_ftp.outputs.server }}
           username: ${{ secrets.FTP_USERNAME || secrets.FTP_USER }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: ${{ secrets.FTP_TARGET }}
