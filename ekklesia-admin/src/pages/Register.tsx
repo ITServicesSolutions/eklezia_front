@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { registerUser } from '../api/auth';
+import logo from '../assets/images/logo.jpeg';
 
 // Interfaces pour les types
 interface RegisterFormData {
@@ -145,17 +146,19 @@ const Register: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 sm:p-10 border border-gray-100 dark:border-gray-700">
           
           <div className="text-center mb-8">
-            <div className="mx-auto w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
+            {/*Logo/Icon */}
+            <div className="mb-6 flex justify-center">
+              <img 
+              src={logo}
+              alt="logo" 
+              className="h-16 w-16 object-contain"
+              />
             </div>
-            
             <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
               Créer un compte
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              Rejoignez la communauté Assemblée de Dieu
+              Rejoignez la communauté EEAD-TU
             </p>
           </div>
 

@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Heart, Phone, Mail, MapPin } from 'lucide-react';
-import logo from '../assets/images/logo_eglise.jpeg';
+import { BookOpen, Heart } from 'lucide-react';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 

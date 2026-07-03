@@ -3,7 +3,7 @@ import Swal from 'sweetalert2';
 import { getCurrentUser, canManageContent } from '../utils/auth';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../api/events';
 import Pagination from '../components/Pagination';
-import { Calendar, Clock, Plus, X, Eye, Edit3, Trash2, FileText, AlertTriangle, Filter } from 'lucide-react';
+import { Calendar, Clock, Plus, X, Eye, Edit3, Trash2, FileText, AlertTriangle } from 'lucide-react';
 
 export interface Event {
   id: number;

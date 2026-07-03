@@ -97,3 +97,11 @@ export const logoutUser = async (): Promise<void> => {
     localStorage.removeItem('ekklesia-token');
   }
 };
+
+export const resetPasswordProfile = async (old_password: string, new_password: string) => {
+  const response = await axiosInstance.post('/api/v1/users/me/change-password', {
+    old_password,
+    new_password,
+  });
+  return response.data;
+};

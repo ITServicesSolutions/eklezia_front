@@ -7,8 +7,7 @@ import PublicFooter from '../components/PublicFooter';
 
 const B  = '#1a3a8a';
 const BM = '#2952cc';
-const G  = '#c9a227';
-const GL = '#f0d060';
+
 const BG = '#f0f4ff';
 const API = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -135,7 +134,7 @@ const LivePage: React.FC = () => {
 
   /* Galerie = non-live sessions */
   const galerie = filtered.filter(s => !s.is_live);
-  const ytIdFn = ytId;
+
 
   const FILTERS: { k: FilterType; label: string; count: number }[] = [
     { k: 'all',      label: 'Tous',         count: sessions.length },

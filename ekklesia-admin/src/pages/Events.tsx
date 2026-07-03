@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getEvents, createEvent } from '../api/events';
+import Swal from 'sweetalert2';
 import { getCurrentUser, canManageContent } from '../utils/auth';
+import { getEvents, createEvent, updateEvent, deleteEvent } from '../api/events';
+import Pagination from '../components/Pagination';
 
 export interface Event {
   id: number;
@@ -29,12 +31,17 @@ const Events: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null); // pour la modification
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 10;
 
   const [newEvent, setNewEvent] = useState<CreateEventData>({
     title: '',
     description: '',
     start_date: new Date().toISOString().slice(0, 16),
-    end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
+    end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
   });
 
   const fetchEvents = async () => {
@@ -66,22 +73,22 @@ const Events: React.FC = () => {
 
   const filterEvents = (filter: EventFilter) => {
     setCurrentFilter(filter);
-    
+
     switch (filter) {
       case 'upcoming':
-        setFilteredEvents(events.filter(event => 
-          getEventStatus(event.start_date, event.end_date) === 'upcoming'
-        ));
+        setFilteredEvents(
+          events.filter(event => getEventStatus(event.start_date, event.end_date) === 'upcoming')
+        );
         break;
       case 'ongoing':
-        setFilteredEvents(events.filter(event => 
-          getEventStatus(event.start_date, event.end_date) === 'ongoing'
-        ));
+        setFilteredEvents(
+          events.filter(event => getEventStatus(event.start_date, event.end_date) === 'ongoing')
+        );
         break;
       case 'past':
-        setFilteredEvents(events.filter(event => 
-          getEventStatus(event.start_date, event.end_date) === 'past'
-        ));
+        setFilteredEvents(
+          events.filter(event => getEventStatus(event.start_date, event.end_date) === 'past')
+        );
         break;
       case 'all':
       default:
@@ -102,13 +109,18 @@ const Events: React.FC = () => {
 
   useEffect(() => {
     filterEvents(currentFilter);
-  }, [events]);
+  }, [events, currentFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [currentFilter]);
 
   const hasManagementPermission = canManageContent(currentUser);
+  const isAdmin = currentUser?.role?.name === 'admin';
 
-  const handleAdd = async (e: React.FormEvent) => {
+  const handleAddOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newEvent.title.trim()) {
       setError('Le titre de l\'événement est requis');
       return;
@@ -126,48 +138,113 @@ const Events: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const eventToCreate = {
+      const eventToSave = {
         ...newEvent,
         start_date: new Date(newEvent.start_date).toISOString(),
-        end_date: new Date(newEvent.end_date).toISOString()
+        end_date: new Date(newEvent.end_date).toISOString(),
       };
-      
-      const createdEvent = await createEvent(eventToCreate);
-      const updatedEvents = [...events, createdEvent];
-      setEvents(updatedEvents);
+
+      if (editingEvent) {
+        // Mode modification
+        const updatedEvent = await updateEvent(editingEvent.id, eventToSave);
+        setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+        Swal.fire({
+          title: 'Succès',
+          text: 'Événement modifié avec succès',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        // Mode création
+        const createdEvent = await createEvent(eventToSave);
+        setEvents(prev => [...prev, createdEvent]);
+        Swal.fire({
+          title: 'Succès',
+          text: 'Événement créé avec succès',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
+
+      // Reset form
       setNewEvent({
         title: '',
         description: '',
         start_date: new Date().toISOString().slice(0, 16),
-        end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
+        end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
       });
       setShowForm(false);
+      setEditingEvent(null);
       setError(null);
     } catch (error: any) {
-      console.error('Failed to add event', error);
-      
+      console.error('Failed to save event', error);
       if (error.response?.status === 401) {
         setError('Session expirée. Veuillez vous reconnecter.');
       } else if (error.response?.status === 403) {
-        setError('Vous n\'avez pas les permissions pour créer un événement');
+        setError('Vous n\'avez pas les permissions nécessaires');
       } else if (error.response?.status === 422) {
         setError('Données invalides. Vérifiez les champs du formulaire.');
       } else if (error.response?.data?.detail) {
         setError(`Erreur: ${error.response.data.detail}`);
       } else {
-        setError('Erreur lors de l\'ajout de l\'événement');
+        setError(editingEvent ? 'Erreur lors de la modification' : 'Erreur lors de la création');
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleDelete = async (id: number) => {
+    const result = await Swal.fire({
+      title: 'Confirmation',
+      text: 'Êtes-vous sûr de vouloir supprimer cet événement ?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Oui, supprimer',
+      cancelButtonText: 'Annuler',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await deleteEvent(id);
+        setEvents(prev => prev.filter(e => e.id !== id));
+        Swal.fire({
+          title: 'Supprimé',
+          text: 'L\'événement a été supprimé',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } catch (error: any) {
+        console.error('Failed to delete event', error);
+        Swal.fire({
+          title: 'Erreur',
+          text: error.response?.data?.detail || 'Impossible de supprimer l\'événement',
+          icon: 'error',
+        });
+      }
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setNewEvent(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setNewEvent(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditClick = (event: Event) => {
+    setEditingEvent(event);
+    setNewEvent({
+      title: event.title,
+      description: event.description,
+      start_date: new Date(event.start_date).toISOString().slice(0, 16),
+      end_date: new Date(event.end_date).toISOString().slice(0, 16),
+    });
+    setShowForm(true);
+    setError(null);
   };
 
   const handleReconnect = () => {
@@ -181,7 +258,7 @@ const Events: React.FC = () => {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
@@ -189,35 +266,56 @@ const Events: React.FC = () => {
     const date = new Date(dateString);
     return date.toLocaleTimeString('fr-FR', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+    });
+  };
+
+  const formatShortDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
     });
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ongoing': return 'bg-green-500';
-      case 'upcoming': return 'bg-blue-500';
-      case 'past': return 'bg-gray-500';
-      default: return 'bg-gray-500';
+      case 'ongoing':
+        return 'bg-green-500';
+      case 'upcoming':
+        return 'bg-blue-500';
+      case 'past':
+        return 'bg-gray-500';
+      default:
+        return 'bg-gray-500';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'ongoing': return 'En cours';
-      case 'upcoming': return 'À venir';
-      case 'past': return 'Terminé';
-      default: return 'Inconnu';
+      case 'ongoing':
+        return 'En cours';
+      case 'upcoming':
+        return 'À venir';
+      case 'past':
+        return 'Terminé';
+      default:
+        return 'Inconnu';
     }
   };
 
   const getEventCountByStatus = (status: EventFilter) => {
     if (status === 'all') return events.length;
-    
-    return events.filter(event => 
-      getEventStatus(event.start_date, event.end_date) === status
-    ).length;
+    return events.filter(event => getEventStatus(event.start_date, event.end_date) === status).length;
   };
+
+  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / itemsPerPage));
+  const paginatedEvents = filteredEvents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  useEffect(() => {
+    setCurrentPage(prev => Math.min(prev, totalPages));
+  }, [totalPages]);
 
   if (loading) {
     return (
@@ -244,39 +342,58 @@ const Events: React.FC = () => {
           </p>
         </div>
 
-        <div className={`mb-8 p-6 rounded-2xl backdrop-blur-sm border transition-all duration-300 ${
-          currentUser 
-            ? 'bg-blue-500/10 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200' 
-            : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
-        }`}>
+        {/* Bannière utilisateur */}
+        <div
+          className={`mb-8 p-6 rounded-2xl backdrop-blur-sm border transition-all duration-300 ${
+            currentUser
+              ? 'bg-blue-500/10 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200'
+              : 'bg-amber-500/10 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+          }`}
+        >
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg ${
-                currentUser ? 'bg-blue-100 dark:bg-blue-900' : 'bg-amber-100 dark:bg-amber-900'
-              }`}>
+              <div
+                className={`p-2 rounded-lg ${
+                  currentUser ? 'bg-blue-100 dark:bg-blue-900' : 'bg-amber-100 dark:bg-amber-900'
+                }`}
+              >
                 {currentUser ? (
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 ) : (
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 )}
               </div>
               <div>
                 {currentUser ? (
                   <div className="text-sm sm:text-base">
-                    <span className="font-semibold">{currentUser.email}</span> • 
-                    Rôle: <span className="font-semibold">{currentUser.role?.name || 'Non déterminé'}</span> • 
-                    <span className={`ml-1 ${hasManagementPermission ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                    <span className="font-semibold">{currentUser.email}</span> • Rôle:{' '}
+                    <span className="font-semibold">{currentUser.role?.name || 'Non déterminé'}</span> •{' '}
+                    <span
+                      className={`ml-1 ${
+                        hasManagementPermission
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
                       {hasManagementPermission ? 'Permissions complètes' : 'Lecture seule'}
                     </span>
                   </div>
                 ) : (
                   <div className="flex items-center space-x-2">
                     <span className="font-semibold">Session non détectée</span>
-                    <button 
+                    <button
                       onClick={handleReconnect}
                       className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors text-sm font-medium"
                     >
@@ -286,10 +403,20 @@ const Events: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             {hasManagementPermission && (
               <button
-                onClick={() => setShowForm(!showForm)}
+                onClick={() => {
+                  setEditingEvent(null);
+                  setNewEvent({
+                    title: '',
+                    description: '',
+                    start_date: new Date().toISOString().slice(0, 16),
+                    end_date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16),
+                  });
+                  setShowForm(!showForm);
+                  setError(null);
+                }}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl font-semibold flex items-center space-x-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,13 +434,17 @@ const Events: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
                   <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <span className="text-red-800 dark:text-red-200 font-medium">{error}</span>
               </div>
               {error.includes('Session expirée') && (
-                <button 
+                <button
                   onClick={handleReconnect}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
                 >
@@ -332,11 +463,11 @@ const Events: React.FC = () => {
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  <span>Nouvel Événement</span>
+                  <span>{editingEvent ? 'Modifier l\'événement' : 'Nouvel Événement'}</span>
                 </h4>
               </div>
-              
-              <form onSubmit={handleAdd} className="p-6 space-y-6">
+
+              <form onSubmit={handleAddOrUpdate} className="p-6 space-y-6">
                 <div className="space-y-2">
                   <label htmlFor="title" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Titre de l'événement *
@@ -356,7 +487,7 @@ const Events: React.FC = () => {
                     {newEvent.title.length}/100 caractères
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label htmlFor="description" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
                     Description
@@ -375,8 +506,8 @@ const Events: React.FC = () => {
                     {newEvent.description.length}/500 caractères
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <label htmlFor="start_date" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
                       Date et heure de début *
@@ -407,7 +538,7 @@ const Events: React.FC = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex space-x-4 pt-4">
                   <button
                     type="submit"
@@ -417,20 +548,23 @@ const Events: React.FC = () => {
                     {isSubmitting ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Création...</span>
+                        <span>{editingEvent ? 'Modification...' : 'Création...'}</span>
                       </>
                     ) : (
                       <>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>Créer l'événement</span>
+                        <span>{editingEvent ? 'Mettre à jour' : 'Créer l\'événement'}</span>
                       </>
                     )}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingEvent(null);
+                    }}
                     className="px-6 py-3 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors font-medium"
                   >
                     Annuler
@@ -450,43 +584,43 @@ const Events: React.FC = () => {
               {currentFilter === 'past' && 'Événements passés'}
               <span className="ml-2 text-blue-600 dark:text-blue-400">({filteredEvents.length})</span>
             </h2>
-            
+
             <div className="flex space-x-2">
-              <button 
+              <button
                 onClick={() => filterEvents('all')}
                 className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                  currentFilter === 'all' 
-                    ? 'bg-blue-600 text-white border-blue-600' 
+                  currentFilter === 'all'
+                    ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 Tous ({getEventCountByStatus('all')})
               </button>
-              <button 
+              <button
                 onClick={() => filterEvents('upcoming')}
                 className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                  currentFilter === 'upcoming' 
-                    ? 'bg-blue-600 text-white border-blue-600' 
+                  currentFilter === 'upcoming'
+                    ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 À venir ({getEventCountByStatus('upcoming')})
               </button>
-              <button 
+              <button
                 onClick={() => filterEvents('ongoing')}
                 className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                  currentFilter === 'ongoing' 
-                    ? 'bg-green-600 text-white border-green-600' 
+                  currentFilter === 'ongoing'
+                    ? 'bg-green-600 text-white border-green-600'
                     : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
                 En cours ({getEventCountByStatus('ongoing')})
               </button>
-              <button 
+              <button
                 onClick={() => filterEvents('past')}
                 className={`px-4 py-2 border rounded-lg text-sm font-medium transition-colors ${
-                  currentFilter === 'past' 
-                    ? 'bg-gray-600 text-white border-gray-600' 
+                  currentFilter === 'past'
+                    ? 'bg-gray-600 text-white border-gray-600'
                     : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                 }`}
               >
@@ -500,7 +634,12 @@ const Events: React.FC = () => {
               <div className="max-w-md mx-auto">
                 <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                   <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
                   </svg>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -510,10 +649,10 @@ const Events: React.FC = () => {
                   {currentFilter === 'past' && 'Aucun événement passé'}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  {currentFilter === 'all' && 'Aucun événement n\'est planifié pour le moment.'}
-                  {currentFilter === 'upcoming' && 'Aucun événement à venir n\'est planifié.'}
-                  {currentFilter === 'ongoing' && 'Aucun événement n\'est en cours actuellement.'}
-                  {currentFilter === 'past' && 'Aucun événement passé n\'a été trouvé.'}
+                  {currentFilter === 'all' && "Aucun événement n'est planifié pour le moment."}
+                  {currentFilter === 'upcoming' && "Aucun événement à venir n'est planifié."}
+                  {currentFilter === 'ongoing' && "Aucun événement n'est en cours actuellement."}
+                  {currentFilter === 'past' && 'Aucun événement passé n’a été trouvé.'}
                 </p>
                 {hasManagementPermission && currentFilter === 'all' && (
                   <button
@@ -534,90 +673,166 @@ const Events: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredEvents.map((event, index) => {
-                const status = getEventStatus(event.start_date, event.end_date);
-                return (
-                  <div 
-                    key={event.id}
-                    className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 transform hover:-translate-y-1 group"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <div className="flex justify-between items-start p-6 pb-4">
-                      <div className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(status)}`}>
-                        {getStatusText(status)}
-                      </div>
-                      <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
-                        <button className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-6 pt-0">
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2">
-                        {event.title}
-                      </h3>
-                      
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-300">
-                          <div className="bg-blue-100 dark:bg-blue-900 p-2 rounded-lg">
-                            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <div className="font-medium">Début</div>
-                            <div className="text-sm">
-                              {formatDate(event.start_date)} à {formatTime(event.start_date)}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-3 text-gray-600 dark:text-gray-300">
-                          <div className="bg-purple-100 dark:bg-purple-900 p-2 rounded-lg">
-                            <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <div className="font-medium">Fin</div>
-                            <div className="text-sm">
-                              {formatDate(event.end_date)} à {formatTime(event.end_date)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <p className="text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
-                          {event.description || 'Aucune description disponible pour cet événement.'}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-600">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          #{event.id}
+            <div className="overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
+              <div className="space-y-4 p-4 lg:hidden">
+                {paginatedEvents.map(event => {
+                  const status = getEventStatus(event.start_date, event.end_date);
+                  return (
+                    <div key={event.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">{event.title}</h3>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(status)}`}>
+                          {getStatusText(status)}
                         </span>
-                        <button className="px-4 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors text-sm font-medium">
-                          Voir détails
+                      </div>
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{event.description || 'Aucune description'}</p>
+                      <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Debut</p>
+                          <p className="text-gray-900 dark:text-white">{formatShortDate(event.start_date)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatTime(event.start_date)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Fin</p>
+                          <p className="text-gray-900 dark:text-white">{formatShortDate(event.end_date)}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{formatTime(event.end_date)}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button onClick={() => setViewingEvent(event)} className="rounded-lg p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:text-gray-400 dark:hover:text-gray-300" title="Voir" aria-label="Voir">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
                         </button>
+                        {hasManagementPermission && (
+                          <button onClick={() => handleEditClick(event)} className="rounded-lg p-2 text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-blue-400 dark:hover:text-blue-300" title="Modifier" aria-label="Modifier">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button onClick={() => handleDelete(event.id)} className="rounded-lg p-2 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400 dark:hover:text-red-300" title="Supprimer" aria-label="Supprimer">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              <div className="hidden lg:block">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Titre
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Début
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Fin
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Statut
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {paginatedEvents.map(event => {
+                    const status = getEventStatus(event.start_date, event.end_date);
+                    return (
+                      <tr key={event.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {event.title}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                            {event.description || '—'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                          {formatShortDate(event.start_date)} {formatTime(event.start_date)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                          {formatShortDate(event.end_date)} {formatTime(event.end_date)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${getStatusColor(status)}`}>
+                            {getStatusText(status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => setViewingEvent(event)}
+                              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-gray-500"
+                              title="Voir"
+                              aria-label="Voir"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+
+                            {hasManagementPermission && (
+                              <button
+                                onClick={() => handleEditClick(event)}
+                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                title="Modifier"
+                                aria-label="Modifier"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            )}
+
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDelete(event.id)}
+                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                                title="Supprimer"
+                                aria-label="Supprimer"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredEvents.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                itemLabel="evenements"
+              />
             </div>
           )}
         </div>
 
+        {/* Statistiques */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
             <div>
@@ -625,15 +840,11 @@ const Events: React.FC = () => {
               <div className="text-sm text-gray-600 dark:text-gray-400">Événements total</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {getEventCountByStatus('upcoming')}
-              </div>
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{getEventCountByStatus('upcoming')}</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">À venir</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {getEventCountByStatus('ongoing')}
-              </div>
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{getEventCountByStatus('ongoing')}</div>
               <div className="text-sm text-gray-600 dark:text-gray-400">En cours</div>
             </div>
             <div>
@@ -644,6 +855,131 @@ const Events: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Modale de visualisation */}
+        {viewingEvent && (
+          <div
+            className="fixed inset-0 z-50 overflow-y-auto"
+            aria-labelledby="modal-title"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+              {/* Overlay avec flou */}
+              <div
+                className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
+                aria-hidden="true"
+                onClick={() => setViewingEvent(null)}
+              ></div>
+
+              {/* Centreur */}
+              <span
+                className="hidden sm:inline-block sm:align-middle sm:h-screen"
+                aria-hidden="true"
+              >
+                &#8203;
+              </span>
+
+              {/* Modale */}
+              <div className="inline-block w-full max-w-2xl p-6 overflow-hidden text-left align-bottom transition-all transform bg-white dark:bg-gray-800 rounded-2xl shadow-2xl sm:my-8 sm:align-middle sm:p-8">
+                {/* Barre de dégradé en haut */}
+                <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+                
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white" id="modal-title">
+                      {viewingEvent.title}
+                    </h3>
+                    <div className="flex items-center mt-2 space-x-2">
+                      <span
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(
+                          getEventStatus(viewingEvent.start_date, viewingEvent.end_date)
+                        )}`}
+                      >
+                        {getStatusText(getEventStatus(viewingEvent.start_date, viewingEvent.end_date))}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        ID: #{viewingEvent.id}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setViewingEvent(null)}
+                    className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Description */}
+                <div className="mb-6">
+                  <h4 className="flex items-center mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Description
+                  </h4>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {viewingEvent.description || 'Aucune description fournie.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Dates */}
+                <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+                    <div className="flex items-center mb-2 text-blue-700 dark:text-blue-300">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-semibold">Début</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatDate(viewingEvent.start_date)}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {formatTime(viewingEvent.start_date)}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+                    <div className="flex items-center mb-2 text-purple-700 dark:text-purple-300">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="font-semibold">Fin</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatDate(viewingEvent.end_date)}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {formatTime(viewingEvent.end_date)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Informations supplémentaires */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Créé par l'utilisateur #{viewingEvent.user_id}
+                  </div>
+                  <button
+                    onClick={() => setViewingEvent(null)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Fermer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Sparkles, CalendarDays, LogIn, Heart,
-  ChevronRight, ChevronLeft, MapPin, Phone, Mail,
-  Users, Menu, X, Newspaper, ExternalLink,
+  ChevronRight, ChevronLeft,
+  Users, X, Newspaper,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getFeed, type FeedItem } from '../api/feed';
@@ -53,29 +53,7 @@ const Particles: React.FC = () => (
   </div>
 );
 
-/* ── Ticker ────────────────────────────────────────────── */
-const Ticker: React.FC<{ items: string[] }> = ({ items }) => {
-  if (!items.length) return null;
-  const doubled = [...items, ...items];
-  return (
-    <div className="overflow-hidden flex items-center gap-2 py-1.5" style={{ background: G }}>
-      <span className="flex-shrink-0 pl-3 text-[10px] font-black uppercase tracking-widest" style={{ color: B }}>
-        ✝ Actu
-      </span>
-      <div className="overflow-hidden flex-1">
-        <motion.div className="flex gap-8 whitespace-nowrap"
-          animate={{ x: ['0%', '-50%'] }}
-          transition={{ duration: 35, repeat: Infinity, ease: 'linear' }}>
-          {doubled.map((t, i) => (
-            <span key={i} className="text-[11px] font-semibold" style={{ color: B }}>
-              {t} &nbsp;·&nbsp;
-            </span>
-          ))}
-        </motion.div>
-      </div>
-    </div>
-  );
-};
+
 
 
 /* ── Slides du carousel (photos à placer dans /public/) ─── */
@@ -287,177 +265,14 @@ const Stats: React.FC = () => (
 );
 
 /* ── Carousel générique ────────────────────────────────── */
-const Carousel: React.FC<{
-  label: string; icon: React.ReactNode; color: string; id?: string;
-  children: React.ReactNode[];
-}> = ({ label, icon, color, id, children }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const scroll = (dir: 'l' | 'r') =>
-    ref.current?.scrollBy({ left: dir === 'r' ? 290 : -290, behavior: 'smooth' });
 
-  if (!children.length) return null;
-
-  return (
-    <div id={id} className="mb-8">
-      {/* En-tête rangée */}
-      <div className="flex items-center gap-2 mb-3 px-5">
-        <div className="w-6 h-6 rounded-lg flex items-center justify-center text-white"
-          style={{ background: color }}>
-          {icon}
-        </div>
-        <h3 className="font-black text-sm" style={{ color }}>{label}</h3>
-        <div className="flex-1 h-px mx-2" style={{ background: `${color}30` }} />
-        <button onClick={() => scroll('l')}
-          className="w-7 h-7 flex items-center justify-center rounded-full border transition-all hover:scale-110"
-          style={{ borderColor: `${color}40`, color }}>
-          <ChevronLeft size={14} />
-        </button>
-        <button onClick={() => scroll('r')}
-          className="w-7 h-7 flex items-center justify-center rounded-full border transition-all hover:scale-110"
-          style={{ borderColor: `${color}40`, color }}>
-          <ChevronRight size={14} />
-        </button>
-      </div>
-
-      {/* Piste défilante */}
-      <div ref={ref}
-        className="flex gap-3 overflow-x-auto scroll-smooth no-scrollbar px-5 pb-2"
-        style={{ scrollSnapType: 'x mandatory' }}>
-        {React.Children.map(children, (child, i) => (
-          <motion.div key={i}
-            initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }} transition={{ delay: i * 0.06 }}
-            style={{ scrollSnapAlign: 'start', flexShrink: 0, width: 260 }}>
-            {child}
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/* ── Cartes ────────────────────────────────────────────── */
-const NewsCard: React.FC<{ a: GospelArticle }> = ({ a }) => (
-  <motion.a href={a.link} target="_blank" rel="noopener noreferrer"
-    whileHover={{ y: -4, boxShadow: `0 16px 32px ${B}22` }}
-    className="rounded-2xl overflow-hidden bg-white flex flex-col h-full cursor-pointer transition-all"
-    style={{ border: `1px solid ${BG}` }}>
-    {a.thumbnail
-      ? <img src={a.thumbnail} alt="" className="w-full h-32 object-cover"
-          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-      : <div className="w-full h-16 flex items-center justify-center"
-          style={{ background: `linear-gradient(135deg,${B}12,${BM}22)` }}>
-          <Newspaper size={22} style={{ color: BL, opacity: 0.3 }} />
-        </div>
-    }
-    <div className="p-3 flex flex-col flex-1">
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: BG, color: BM }}>{a.source}</span>
-        <span className="text-[9px] text-gray-400 ml-auto">
-          {new Date(a.pubDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
-        </span>
-      </div>
-      <h3 className="text-xs font-bold line-clamp-2 mb-1 flex-1" style={{ color: B }}>{a.title}</h3>
-      {a.description && <p className="text-[10px] text-gray-400 line-clamp-2">{a.description}</p>}
-      <div className="flex items-center gap-1 mt-2 text-[10px] font-semibold" style={{ color: BM }}>
-        Lire <ExternalLink size={10} />
-      </div>
-    </div>
-  </motion.a>
-);
-
-const MotivCard: React.FC<{ m: FeedItem }> = ({ m }) => (
-  <motion.div whileHover={{ y: -4 }}
-    className="rounded-2xl p-4 bg-white flex flex-col gap-2 h-full transition-all"
-    style={{ border: `1px solid ${BG}` }}>
-    <div className="flex items-center gap-2">
-      <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-        style={{ background: `linear-gradient(135deg,${G},${GL})` }}>
-        <Sparkles size={12} className="text-white" />
-      </div>
-      <span className="text-[9px] font-black uppercase tracking-wider" style={{ color: G }}>Motivation</span>
-    </div>
-    {m.data.image_url && (
-      <img src={m.data.image_url} alt="" className="w-full h-28 object-cover rounded-xl"
-        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-    )}
-    <h3 className="text-xs font-black leading-tight" style={{ color: B }}>{m.data.title}</h3>
-    <p className="text-[10px] text-gray-500 leading-relaxed line-clamp-4">{m.data.content}</p>
-  </motion.div>
-);
-
-const EventCard: React.FC<{ e: FeedItem }> = ({ e }) => {
-  const start   = new Date(e.data.start_date);
-  const end     = e.data.end_date ? new Date(e.data.end_date) : null;
-  const now     = new Date();
-  const ongoing = start <= now && (!end || end >= now);
-  const past    = end ? end < now : start < now;
-  const future  = start > now;
-
-  /* Palette selon statut */
-  const palette = ongoing
-    ? { bg: 'linear-gradient(135deg,#059669,#10b981)', badge: '#d1fae5', badgeTxt: '#065f46', label: '● En cours' }
-    : past
-    ? { bg: 'linear-gradient(135deg,#64748b,#94a3b8)', badge: '#f1f5f9', badgeTxt: '#475569', label: 'Passé' }
-    : { bg: `linear-gradient(135deg,${B},${BM})`,      badge: '#e0e7ff', badgeTxt: '#3730a3', label: 'À venir' };
-
-  return (
-    <motion.div whileHover={{ y: -5, boxShadow: '0 16px 40px rgba(0,0,0,0.12)' }}
-      className="rounded-2xl overflow-hidden bg-white transition-all flex flex-col"
-      style={{ border: `1px solid ${BG}`, minWidth: 280 }}>
-
-      {/* Bande colorée en haut */}
-      <div className="px-5 py-4 flex items-start gap-4" style={{ background: palette.bg }}>
-        {/* Calendrier date */}
-        <div className="flex flex-col items-center justify-center bg-white/20 rounded-xl px-3 py-2 flex-shrink-0 text-white">
-          <span className="text-2xl font-black leading-none">{start.getDate()}</span>
-          <span className="text-[10px] uppercase font-bold opacity-80">
-            {start.toLocaleDateString('fr-FR', { month: 'short' })}
-          </span>
-          <span className="text-[9px] opacity-60">{start.getFullYear()}</span>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          {/* Badge statut */}
-          <span className="inline-block text-[9px] font-black px-2 py-0.5 rounded-full mb-2"
-            style={{ background: 'rgba(255,255,255,.25)', color: 'white' }}>
-            {palette.label}
-          </span>
-          <h3 className="font-black text-white text-sm leading-snug">{e.data.title}</h3>
-          <p className="text-white/65 text-[10px] mt-1">
-            {start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-            {end && (
-              <> → {end.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} {end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {/* Corps */}
-      {e.data.description && (
-        <div className="px-5 py-3 flex-1">
-          <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{e.data.description}</p>
-        </div>
-      )}
-
-      {/* Pied avec indicateur coloré */}
-      <div className="px-5 py-2 border-t border-gray-100 flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full flex-shrink-0"
-          style={{ background: ongoing ? '#10b981' : past ? '#94a3b8' : BM }} />
-        <span className="text-[9px] font-bold" style={{ color: ongoing ? '#059669' : past ? '#94a3b8' : BM }}>
-          {palette.label}
-        </span>
-      </div>
-    </motion.div>
-  );
-};
 
 
 /* ── Contenu du jour (verset / message / vidéo) ─────────── */
 const ytId = (url?: string | null) =>
   url?.match(/(?:v=|youtu\.be\/|live\/|embed\/)([a-zA-Z0-9_-]{11})/)?.[1] ?? null;
 
-const DailyContent: React.FC<{
+export const DailyContent: React.FC<{
   verse: FeedItem | undefined;
   fallbackVerse: ExternalVerse | null;
 }> = ({ verse, fallbackVerse }) => {
@@ -568,79 +383,7 @@ const DailyContent: React.FC<{
 /* ── Émission de la semaine ──────────────────────────── */
 interface Emission { id: number; title: string; description?: string; video_url: string; week_date: string; is_active: boolean; }
 
-const EmissionCard: React.FC<{ e: Emission }> = ({ e }) => {
-  const [playing, setPlaying] = useState(false);
-  const id = e.video_url?.match(/(?:v=|youtu\.be\/|live\/|embed\/)([a-zA-Z0-9_-]{11})/)?.[1];
-  const thumb = id ? `https://img.youtube.com/vi/${id}/mqdefault.jpg` : null;
 
-  return (
-    <motion.div whileHover={{ y: -4 }}
-      className="rounded-2xl overflow-hidden bg-white flex flex-col transition-all"
-      style={{ border: `1px solid #ede9fe` }}>
-      {/* Thumbnail / Player */}
-      <div className="relative" style={{ aspectRatio: '16/9' }}>
-        {playing && id ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1`}
-            className="absolute inset-0 w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen title={e.title}
-          />
-        ) : (
-          <>
-            {thumb
-              ? <img src={thumb} alt="" className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
-                  <Tv2 size={28} className="text-white opacity-40" />
-                </div>
-            }
-            {/* Bouton play */}
-            <button onClick={() => setPlaying(true)}
-              className="absolute inset-0 flex items-center justify-center group">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all group-hover:scale-110"
-                style={{ background: '#7c3aed' }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-              </div>
-            </button>
-          </>
-        )}
-      </div>
-      {/* Infos */}
-      <div className="p-3 flex flex-col gap-1">
-        <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#7c3aed' }}>
-          Semaine du {new Date(e.week_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </span>
-        <h3 className="text-xs font-black line-clamp-2" style={{ color: B }}>{e.title}</h3>
-        {e.description && <p className="text-[10px] text-gray-400 line-clamp-2">{e.description}</p>}
-      </div>
-    </motion.div>
-  );
-};
-
-const WeeklyEmissionSection: React.FC = () => {
-  const [emissions, setEmissions] = useState<Emission[]>([]);
-
-  useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}/api/v1/weekly-emission/`)
-      .then(r => r.json())
-      .then(d => setEmissions(Array.isArray(d) ? d.filter((e: Emission) => e.is_active) : []))
-      .catch(() => {});
-  }, []);
-
-  if (!emissions.length) return null;
-
-  return (
-    <section id="emission" style={{ scrollMarginTop: '60px' }}>
-      <div className="py-4" style={{ background: BG }}>
-        <Carousel label="Émission de la semaine" icon={<Tv2 size={13} />} color="#7c3aed">
-          {emissions.map(e => <EmissionCard key={e.id} e={e} />)}
-        </Carousel>
-      </div>
-    </section>
-  );
-};
 
 /* ── Page principale ───────────────────────────────────── */
 const PublicHome: React.FC = () => {
@@ -648,10 +391,7 @@ const PublicHome: React.FC = () => {
   const [news, setNews]   = useState<GospelArticle[]>([]);
   const [verse, setVerse] = useState<ExternalVerse | null>(null);
   const [loading, setLoading] = useState(true);
-  const { scrollY } = useScroll();
-  const [scrolled, setScrolled] = useState(false);
 
-  useEffect(() => scrollY.on('change', v => setScrolled(v > 50)), [scrollY]);
 
   useEffect(() => {
     Promise.all([
@@ -678,11 +418,12 @@ const PublicHome: React.FC = () => {
   const ytIdFromUrl = (url?: string) =>
     url?.match(/(?:v=|youtu\.be\/|live\/|embed\/)([a-zA-Z0-9_-]{11})/)?.[1] ?? null;
 
+  const events      = feed.filter(f => f.type === 'announcement' || (f.data?.start_date && f.data?.title));
   const localVerse  = feed.find(f => f.type === 'verse');
   const heroVerse   = localVerse
     ? { text: localVerse.data.text, reference: localVerse.data.reference }
     : verse;
-  const events      = feed.filter(f => f.type === 'event');
+
 
   // Auto-rotation des actualités gospel
   const [newsIdx, setNewsIdx] = useState(0);
@@ -833,7 +574,7 @@ const PublicHome: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {events.slice(0, 5).map((e, i) => {
+                    {events.slice(0, 5).map((e: FeedItem, i: number) => {
                       const start = new Date(e.data.start_date);
                       const now = new Date();
                       const past = start < now;

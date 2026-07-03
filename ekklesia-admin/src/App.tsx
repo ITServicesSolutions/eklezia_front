@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -10,22 +10,38 @@ import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Programs from './pages/Programs';
+import ProgramTypes from './pages/programTypes';
 import Events from './pages/Events';
 import Medias from './pages/Medias';
 import Contributions from './pages/Contributions';
-import LiveStreams from './pages/LiveStreams';
+import Videos from './pages/Videos';
+import PlatformsSettings from './pages/PlatformsSettings';
+import Profile from './pages/Profile';
 
-const AdminLayout: React.FC = () => (
-  <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-    <Sidebar />
-    <div className="flex flex-col flex-1">
-      <Navbar />
-      <main className="h-full p-4 overflow-y-auto">
-        <Outlet />
-      </main>
+
+const AdminLayout: React.FC = () => {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const handleToggleMobileNav = useCallback(() => {
+    setMobileNavOpen((prev) => !prev);
+  }, []);
+  const handleCloseMobileNav = useCallback(() => {
+    setMobileNavOpen(false);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
+      <div className="flex min-h-screen flex-col">
+        <Navbar onToggleMenu={handleToggleMobileNav} />
+        <Sidebar mobileOpen={mobileNavOpen} onClose={handleCloseMobileNav} />
+        <main className="flex-1 overflow-x-hidden">
+          <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const AppRoutes: React.FC = () => (
   <Routes>
@@ -37,11 +53,14 @@ const AppRoutes: React.FC = () => (
       <Route element={<AdminLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/users" element={<Users />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/programs" element={<Programs />} />
+        <Route path="/program-types" element={<ProgramTypes />} />
         <Route path="/events" element={<Events />} />
         <Route path="/medias" element={<Medias />} />
         <Route path="/contributions" element={<Contributions />} />
-        <Route path="/livestreams" element={<LiveStreams />} />
+        <Route path="/videos" element={<Videos />} />
+        <Route path="/platforms" element={<PlatformsSettings />} />
       </Route>
     </Route>
   </Routes>

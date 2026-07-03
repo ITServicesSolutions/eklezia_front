@@ -1,0 +1,51 @@
+name: Deploy Eklezia Front
+
+on:
+  push:
+    branches:
+      - feature-solv
+  workflow_dispatch: # Permet de lancer le déploiement manuellement depuis GitHub Actions
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: 🧹 Clean FTP Server URL
+        id: clean_ftp
+        run: |
+          SERVER="${{ secrets.FTP_SERVER }}"
+          # Supprimer les préfixes éventuels (ftp://, ftps://, http://, https://)
+          SERVER=${SERVER#*://}
+          # Enlever les espaces avant/après
+          SERVER=$(echo "$SERVER" | xargs)
+          echo "server=$SERVER" >> $GITHUB_OUTPUT
+
+      - name: 📂 Deploy via FTP (No deletion)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        env:
+          ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME || secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ${{ secrets.FTP_TARGET }}
+          local-dir: ./dist/
+          protocol: ftps
+          port: 21

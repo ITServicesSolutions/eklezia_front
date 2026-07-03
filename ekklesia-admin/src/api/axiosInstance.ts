@@ -1,7 +1,15 @@
 import axios from 'axios';
 
+const apiBaseUrl =
+  import.meta.env.VITE_API_URL ??
+  import.meta.env.VITE_API_BASE_URL;
+
+if (!apiBaseUrl) {
+  throw new Error('Missing VITE_API_BASE_URL (or VITE_API_URL) for backend requests.');
+}
+
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8000', // Remplacez par l'URL de votre API
+  baseURL: apiBaseUrl,
 });
 
 // Intercepteur pour ajouter le token d'authentification

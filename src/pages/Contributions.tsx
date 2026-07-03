@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { getCurrentUser, canManageContent } from '../utils/auth';
+import { getCurrentUser } from '../utils/auth';
 import { getContributions } from '../api/contributions';
 import Pagination from '../components/Pagination';
-import { HandHeart, Plus, X, Eye, FileText, AlertTriangle, Calendar, CreditCard, User, Filter } from 'lucide-react';
+import { HandHeart, X, Eye, AlertTriangle, Calendar, CreditCard, User } from 'lucide-react';
 
 export interface Contribution {
   id: number;
@@ -23,7 +23,7 @@ const Contributions: React.FC = () => {
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [, setCurrentUser] = useState<any>(null);
   const [viewingContribution, setViewingContribution] = useState<Contribution | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -64,7 +64,7 @@ const Contributions: React.FC = () => {
     setCurrentPage(1);
   }, [currentFilter]);
 
-  const hasManagementPermission = canManageContent(currentUser);
+
 
   const filterContributions = (filter: string) => {
     setCurrentFilter(filter);
@@ -140,14 +140,7 @@ const Contributions: React.FC = () => {
     return status || 'Inconnu';
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    const m = method?.toLowerCase() || '';
-    if (m.includes('card') || m.includes('visa') || m.includes('mastercard')) return '💳';
-    if (m.includes('mobile') || m.includes('mtn') || m.includes('orange') || m.includes('moov')) return '📱';
-    if (m.includes('paypal')) return '🅿️';
-    if (m.includes('bank') || m.includes('transfer')) return '🏦';
-    return '💰';
-  };
+
 
   const getContributionCountByStatus = (status: string) => {
     if (status === 'all') return contributions.length;

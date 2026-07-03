@@ -1,66 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import {
-  getPrograms,
-  createProgram,
-  updateProgram,
-  deleteProgram,
-  type Program,
-  type CreateProgramData,
-} from '../api/programs';
-import { getProgramTypes, type ProgramType } from '../api/programTypes';
+  getProgramTypes,
+  createProgramType,
+  updateProgramTypePatch,
+  deleteProgramType,
+  type ProgramType,
+  type ProgramTypeCreate,
+  type ProgramTypeUpdate,
+} from '../api/programTypes';
 import { getCurrentUser, canManageContent } from '../utils/auth';
 import { getColorForType } from '../utils/colors';
 import Pagination from '../components/Pagination';
 
-const Programs: React.FC = () => {
-  const [programs, setPrograms] = useState<Program[]>([]);
+const ProgramTypes: React.FC = () => {
   const [programTypes, setProgramTypes] = useState<ProgramType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
-  const [viewingProgram, setViewingProgram] = useState<Program | null>(null); // Nouvel état
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [viewingType, setViewingType] = useState<ProgramType | null>(null); // Nouvel état
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
 
-  const [formData, setFormData] = useState<CreateProgramData>({
-    program_day: new Date().toISOString().split('T')[0],
-    hours_start: '08:00',
+  const [formData, setFormData] = useState<ProgramTypeCreate>({
+    name: '',
     description: '',
-    program_type_id: 0,
   });
 
-  const fetchPrograms = async () => {
-    try {
-      setLoading(true);
-      const data = await getPrograms();
-      setPrograms(data);
-    } catch (error: any) {
-      console.error('Failed to fetch programs', error);
-      if (error.response?.status === 401) {
-        setError('Session expirée. Veuillez vous reconnecter.');
-      } else {
-        setError('Erreur lors du chargement des programmes');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  console.log('ProgramTypes monté');
 
   const fetchProgramTypes = async () => {
     try {
-      const types = await getProgramTypes();
-      setProgramTypes(types);
-      if (types.length > 0 && formData.program_type_id === 0) {
-        setFormData(prev => ({ ...prev, program_type_id: types[0].id }));
+      setLoading(true);
+      const data = await getProgramTypes();
+      setProgramTypes(data);
+    } catch (error: any) {
+      console.error('Failed to fetch program types', error);
+      if (error.response?.status === 401) {
+        setError('Session expirée. Veuillez vous reconnecter.');
+      } else {
+        setError('Erreur lors du chargement des types de programme');
       }
-    } catch (err) {
-      console.error('Failed to load program types', err);
-      setError('Impossible de charger les types de programme');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,9 +55,7 @@ const Programs: React.FC = () => {
       const user = await getCurrentUser();
       setCurrentUser(user);
     };
-
     initializeUser();
-    fetchPrograms();
     fetchProgramTypes();
   }, []);
 
@@ -79,40 +63,30 @@ const Programs: React.FC = () => {
   const isAdmin = currentUser?.role?.name === 'admin';
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'program_type_id' ? parseInt(value, 10) : value,
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const resetForm = () => {
-    setFormData({
-      program_day: new Date().toISOString().split('T')[0],
-      hours_start: '08:00',
-      description: '',
-      program_type_id: programTypes[0]?.id || 0,
-    });
-    setEditingProgram(null);
+    setFormData({ name: '', description: '' });
+    setEditingId(null);
   };
 
-  const handleEditClick = (program: Program) => {
-    setEditingProgram(program);
+  const handleEditClick = (type: ProgramType) => {
+    setEditingId(type.id);
     setFormData({
-      program_day: program.program_day,
-      hours_start: program.hours_start.substring(0, 5),
-      description: program.description || '',
-      program_type_id: program.program_type_id,
+      name: type.name,
+      description: type.description || '',
     });
     setShowForm(true);
     setError(null);
   };
 
   // Nouveau handler pour la visualisation
-  const handleViewClick = (program: Program) => {
-    setViewingProgram(program);
+  const handleViewClick = (type: ProgramType) => {
+    setViewingType(type);
   };
 
   const handleCancel = () => {
@@ -124,53 +98,47 @@ const Programs: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.program_day) {
-      setError('La date du programme est requise');
-      return;
-    }
-    if (!formData.hours_start) {
-      setError('L\'heure de début est requise');
-      return;
-    }
-    if (!formData.program_type_id || formData.program_type_id === 0) {
-      setError('Veuillez sélectionner un type de programme');
+    if (!formData.name.trim()) {
+      setError('Le nom est requis');
       return;
     }
 
     try {
       setIsSubmitting(true);
 
-      const payload = {
-        ...formData,
-        hours_start: formData.hours_start + ':00',
-      };
+      if (editingId) {
+        const updateData: ProgramTypeUpdate = {};
+        if (formData.name !== programTypes.find(t => t.id === editingId)?.name) {
+          updateData.name = formData.name;
+        }
+        if (formData.description !== programTypes.find(t => t.id === editingId)?.description) {
+          updateData.description = formData.description;
+        }
 
-      let savedProgram: Program;
-      if (editingProgram) {
-        savedProgram = await updateProgram(editingProgram.id, payload);
-        setPrograms(prev =>
-          prev.map(p => (p.id === savedProgram.id ? savedProgram : p))
-        );
+        if (Object.keys(updateData).length > 0) {
+          const updated = await updateProgramTypePatch(editingId, updateData);
+          setProgramTypes(prev =>
+            prev.map(t => (t.id === editingId ? updated : t))
+          );
+        }
       } else {
-        savedProgram = await createProgram(payload);
-        setPrograms(prev => [...prev, savedProgram]);
+        const created = await createProgramType(formData);
+        setProgramTypes(prev => [...prev, created]);
       }
 
       resetForm();
       setShowForm(false);
       setError(null);
     } catch (error: any) {
-      console.error('Failed to save program', error);
+      console.error('Failed to save program type', error);
       if (error.response?.status === 401) {
         setError('Session expirée. Veuillez vous reconnecter.');
       } else if (error.response?.status === 403) {
         setError("Vous n'avez pas les permissions nécessaires.");
-      } else if (error.response?.status === 422) {
-        setError('Données invalides. Vérifiez les champs du formulaire.');
-      } else if (error.response?.data?.detail) {
-        setError(`Erreur: ${error.response.data.detail}`);
+      } else if (error.response?.status === 400 && error.response?.data?.detail) {
+        setError(error.response.data.detail);
       } else {
-        setError('Erreur lors de l\'enregistrement du programme');
+        setError('Erreur lors de l\'enregistrement');
       }
     } finally {
       setIsSubmitting(false);
@@ -180,7 +148,7 @@ const Programs: React.FC = () => {
   const handleDelete = async (id: number) => {
     const result = await Swal.fire({
       title: 'Confirmation',
-      text: 'Êtes-vous sûr de vouloir supprimer ce programme ?',
+      text: 'Êtes-vous sûr de vouloir supprimer ce type de programme ?',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
@@ -189,29 +157,27 @@ const Programs: React.FC = () => {
       cancelButtonText: 'Annuler',
     });
 
-    if (!result.isConfirmed) {
-      return;
-    }
+    if (!result.isConfirmed) return;
 
     try {
-      await deleteProgram(id);
-      setPrograms(prev => prev.filter(p => p.id !== id));
+      await deleteProgramType(id);
+      setProgramTypes(prev => prev.filter(t => t.id !== id));
       Swal.fire({
-        title: 'Supprimé!',
-        text: 'Le programme a été supprimé avec succès.',
+        title: 'Supprimé !',
+        text: 'Le type de programme a été supprimé.',
         icon: 'success',
         timer: 2000,
         showConfirmButton: false,
       });
     } catch (error: any) {
-      console.error('Failed to delete program', error);
+      console.error('Failed to delete program type', error);
       let errorMessage = 'Erreur lors de la suppression';
       if (error.response?.status === 401) {
         errorMessage = 'Session expirée. Veuillez vous reconnecter.';
       } else if (error.response?.status === 403) {
         errorMessage = "Vous n'avez pas les permissions nécessaires.";
       } else if (error.response?.data?.detail) {
-        errorMessage = `Erreur: ${error.response.data.detail}`;
+        errorMessage = error.response.data.detail;
       }
       Swal.fire({
         title: 'Erreur',
@@ -227,33 +193,26 @@ const Programs: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return new Date(dateString).toLocaleString('fr-FR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
     });
   };
 
-  const formatTime = (timeString: string) => {
-    return timeString.substring(0, 5);
-  };
-
-  const totalPages = Math.max(1, Math.ceil(programs.length / itemsPerPage));
-  const paginatedPrograms = programs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(programTypes.length / itemsPerPage));
+  const paginatedProgramTypes = programTypes.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(prev => Math.min(prev, totalPages));
   }, [totalPages]);
 
-  if (loading && programs.length === 0) {
+  if (loading && programTypes.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-300">Chargement des programmes...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-300">Chargement des types de programme...</p>
           </div>
         </div>
       </div>
@@ -265,14 +224,14 @@ const Programs: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            Programmes
+            Types de programme
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Découvrez le planning de nos activités et événements
+            Gérez les différentes catégories de programmes (culte, étude, prière, etc.)
           </p>
         </div>
 
-        {/* Bannière utilisateur / permissions */}
+        {/* Bannière utilisateur */}
         <div
           className={`mb-8 p-6 rounded-2xl backdrop-blur-sm border transition-all duration-300 ${
             currentUser
@@ -317,7 +276,7 @@ const Programs: React.FC = () => {
                           : 'text-gray-600 dark:text-gray-400'
                       }`}
                     >
-                      {hasManagementPermission ? 'Permissions complètes' : 'Lecture seule'}
+                      {hasManagementPermission ? 'Peut gérer' : 'Lecture seule'}
                     </span>
                   </div>
                 ) : (
@@ -349,7 +308,7 @@ const Programs: React.FC = () => {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <span>{showForm ? 'Annuler' : 'Nouveau Programme'}</span>
+                <span>{showForm ? 'Annuler' : 'Nouveau type'}</span>
               </button>
             )}
           </div>
@@ -392,88 +351,45 @@ const Programs: React.FC = () => {
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  <span>{editingProgram ? 'Modifier le programme' : 'Nouveau Programme'}</span>
+                  <span>{editingId ? 'Modifier le type' : 'Nouveau type'}</span>
                 </h4>
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Date */}
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <label htmlFor="program_day" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      Date du programme *
+                    <label htmlFor="name" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      Nom du type *
                     </label>
                     <input
-                      type="date"
-                      id="program_day"
-                      name="program_day"
-                      value={formData.program_day}
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={formData.name}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
+                      placeholder="Ex: Culte, Étude biblique, Prière..."
                       required
                     />
                   </div>
 
-                  {/* Heure de début */}
                   <div className="space-y-2">
-                    <label htmlFor="hours_start" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      Heure de début *
+                    <label htmlFor="description" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                      Description
                     </label>
-                    <input
-                      type="time"
-                      id="hours_start"
-                      name="hours_start"
-                      value={formData.hours_start}
+                    <textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
-                      required
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none transition-all duration-200"
+                      placeholder="Description optionnelle du type..."
+                      maxLength={500}
                     />
-                  </div>
-
-                  {/* Type de programme */}
-                  <div className="space-y-2">
-                    <label htmlFor="program_type_id" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      Type de programme *
-                    </label>
-                    <select
-                      id="program_type_id"
-                      name="program_type_id"
-                      value={formData.program_type_id}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-all duration-200"
-                      required
-                    >
-                      <option value={0} disabled>
-                        Sélectionnez un type
-                      </option>
-                      {programTypes.map(type => (
-                        <option key={type.id} value={type.id}>
-                          {type.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div></div>
-                </div>
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <label htmlFor="description" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none transition-all duration-200"
-                    placeholder="Décrivez le programme, les activités prévues, les intervenants..."
-                    maxLength={500}
-                  />
-                  <div className="text-right text-sm text-gray-500 dark:text-gray-400">
-                    {formData.description.length}/500 caractères
+                    <div className="text-right text-sm text-gray-500 dark:text-gray-400">
+                      {formData.description?.length || 0}/500 caractères
+                    </div>
                   </div>
                 </div>
 
@@ -486,14 +402,14 @@ const Programs: React.FC = () => {
                     {isSubmitting ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>{editingProgram ? 'Mise à jour...' : 'Création...'}</span>
+                        <span>{editingId ? 'Mise à jour...' : 'Création...'}</span>
                       </>
                     ) : (
                       <>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        <span>{editingProgram ? 'Mettre à jour' : 'Créer le programme'}</span>
+                        <span>{editingId ? 'Mettre à jour' : 'Créer'}</span>
                       </>
                     )}
                   </button>
@@ -510,16 +426,16 @@ const Programs: React.FC = () => {
           </div>
         )}
 
-        {/* Liste des programmes - Tableau */}
+        {/* Liste des types - Tableau */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Programmes
-              <span className="ml-2 text-blue-600 dark:text-blue-400">({programs.length})</span>
+              Types existants
+              <span className="ml-2 text-blue-600 dark:text-blue-400">({programTypes.length})</span>
             </h2>
           </div>
 
-          {programs.length === 0 ? (
+          {programTypes.length === 0 ? (
             <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
               <div className="max-w-md mx-auto">
                 <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
@@ -528,13 +444,13 @@ const Programs: React.FC = () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l5 5a2 2 0 01.586 1.414V19a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
                     />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Aucun programme</h3>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Aucun type</h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">
-                  Aucun programme n'est prévu pour le moment.
+                  Commencez par créer un type de programme.
                 </p>
                 {hasManagementPermission && (
                   <button
@@ -544,7 +460,7 @@ const Programs: React.FC = () => {
                     }}
                     className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold"
                   >
-                    Créer le premier programme
+                    Créer le premier type
                   </button>
                 )}
               </div>
@@ -552,45 +468,49 @@ const Programs: React.FC = () => {
           ) : (
             <div className="overflow-hidden bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700">
               <div className="space-y-4 p-4 lg:hidden">
-                {paginatedPrograms.map((program) => {
-                  const type = programTypes.find(t => t.id === program.program_type_id);
-                  return (
-                    <div key={program.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
-                      <div className="flex flex-wrap items-center gap-3">
-                        {type && (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white" style={{ backgroundColor: getColorForType(type.name) }}>
-                            {type.name}
-                          </span>
-                        )}
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{formatDate(program.program_day)}</span>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">{formatTime(program.hours_start)}</span>
+                {paginatedProgramTypes.map((type) => (
+                  <div key={type.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/40">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white" style={{ backgroundColor: getColorForType(type.name) }}>
+                        {type.name}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">ID #{type.id}</span>
+                    </div>
+                    <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{type.description || 'Aucune description'}</p>
+                    <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Cree le</p>
+                        <p className="text-gray-900 dark:text-white">{formatDate(type.created_at)}</p>
                       </div>
-                      <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">{program.description || 'Aucune description'}</p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <button onClick={() => handleViewClick(program)} className="rounded-lg p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:text-gray-400 dark:hover:text-gray-300" title="Voir" aria-label="Voir">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                        {hasManagementPermission && (
-                          <button onClick={() => handleEditClick(program)} className="rounded-lg p-2 text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-blue-400 dark:hover:text-blue-300" title="Modifier" aria-label="Modifier">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button onClick={() => handleDelete(program.id)} className="rounded-lg p-2 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400 dark:hover:text-red-300" title="Supprimer" aria-label="Supprimer">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Modifie le</p>
+                        <p className="text-gray-900 dark:text-white">{formatDate(type.updated_at)}</p>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button onClick={() => handleViewClick(type)} className="rounded-lg p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 dark:text-gray-400 dark:hover:text-gray-300" title="Voir" aria-label="Voir">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      {hasManagementPermission && (
+                        <button onClick={() => handleEditClick(type)} className="rounded-lg p-2 text-blue-600 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-blue-400 dark:hover:text-blue-300" title="Modifier" aria-label="Modifier">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button onClick={() => handleDelete(type.id)} className="rounded-lg p-2 text-red-600 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-red-400 dark:hover:text-red-300" title="Supprimer" aria-label="Supprimer">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="hidden lg:block">
@@ -598,16 +518,16 @@ const Programs: React.FC = () => {
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Heure
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Type
+                      Nom
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Créé le
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Modifié le
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Actions
@@ -615,113 +535,143 @@ const Programs: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {paginatedPrograms.map((program) => {
-                    const type = programTypes.find(t => t.id === program.program_type_id);
-                    return (
-                      <tr key={program.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatDate(program.program_day)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatTime(program.hours_start)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {type && (
-                            <span
-                              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
-                              style={{ backgroundColor: getColorForType(type.name) }}
-                            >
-                              {type.name}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">
-                            {program.description || '—'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            {/* Bouton Voir - accessible à tous */}
+                  {paginatedProgramTypes.map((type) => (
+                    <tr key={type.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                          style={{ backgroundColor: getColorForType(type.name) }}
+                        >
+                          {type.name}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">
+                          {type.description || '—'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {formatDate(type.created_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {formatDate(type.updated_at)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          {/* Bouton Voir - accessible à tous */}
+                          <button
+                            onClick={() => handleViewClick(type)}
+                            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            title="Voir"
+                            aria-label="Voir"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                          {hasManagementPermission && (
                             <button
-                              onClick={() => handleViewClick(program)}
-                              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-gray-500"
-                              title="Voir"
-                              aria-label="Voir"
+                              onClick={() => handleEditClick(type)}
+                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              title="Modifier"
+                              aria-label="Modifier"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
-                            {hasManagementPermission && (
-                              <button
-                                onClick={() => handleEditClick(program)}
-                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                title="Modifier"
-                                aria-label="Modifier"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                            )}
-                            {isAdmin && (
-                              <button
-                                onClick={() => handleDelete(program.id)}
-                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
-                                title="Supprimer"
-                                aria-label="Supprimer"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDelete(type.id)}
+                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+                              title="Supprimer"
+                              aria-label="Supprimer"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
               </div>
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={programs.length}
+                totalItems={programTypes.length}
                 itemsPerPage={itemsPerPage}
                 onPageChange={setCurrentPage}
-                itemLabel="programmes"
+                itemLabel="types"
               />
             </div>
           )}
         </div>
 
-        {/* Statistiques */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-            <div>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{programs.length}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Programmes au total</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {programs.filter(p => new Date(p.program_day) >= new Date()).length}
+        {/* Résumé statistique */}
+        {programTypes.length > 0 && (
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center">
+                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-full">
+                  <svg className="w-6 h-6 text-blue-600 dark:text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total types</p>
+                  <p className="text-2xl font-semibold text-gray-900 dark:text-white">{programTypes.length}</p>
+                </div>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Programmes à venir</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {hasManagementPermission ? 'Actif' : 'Lecture'}
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center">
+                <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
+                  <svg className="w-6 h-6 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dernier créé</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {programTypes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatDate(programTypes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0].created_at)}
+                  </p>
+                </div>
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Vos permissions</div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center">
+                <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-full">
+                  <svg className="w-6 h-6 text-purple-600 dark:text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière mise à jour</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {programTypes.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0].name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {formatDate(programTypes.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0].updated_at)}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Modal de visualisation */}
-        {viewingProgram && (
+        {viewingType && (
           <div
             className="fixed inset-0 z-50 overflow-y-auto"
             aria-labelledby="modal-title"
@@ -733,7 +683,7 @@ const Programs: React.FC = () => {
               <div
                 className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 backdrop-blur-sm"
                 aria-hidden="true"
-                onClick={() => setViewingProgram(null)}
+                onClick={() => setViewingType(null)}
               ></div>
 
               <span
@@ -751,62 +701,28 @@ const Programs: React.FC = () => {
                 <div className="flex items-start justify-between mb-6">
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-white" id="modal-title">
-                      Détails du programme
+                      {viewingType.name}
                     </h3>
                     <div className="flex items-center mt-2 space-x-2">
-                      {(() => {
-                        const type = programTypes.find(t => t.id === viewingProgram.program_type_id);
-                        return type ? (
-                          <span
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
-                            style={{ backgroundColor: getColorForType(type.name) }}
-                          >
-                            {type.name}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-500">Type inconnu</span>
-                        );
-                      })()}
+                      <span
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                        style={{ backgroundColor: getColorForType(viewingType.name) }}
+                      >
+                        {viewingType.name}
+                      </span>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
-                        ID: #{viewingProgram.id}
+                        ID: #{viewingType.id}
                       </span>
                     </div>
                   </div>
                   <button
-                    onClick={() => setViewingProgram(null)}
+                    onClick={() => setViewingType(null)}
                     className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-                </div>
-
-                {/* Date et Heure */}
-                <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                    <div className="flex items-center mb-2 text-blue-700 dark:text-blue-300">
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <span className="font-semibold">Date</span>
-                    </div>
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">
-                      {formatDate(viewingProgram.program_day)}
-                    </p>
-                  </div>
-
-                  <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
-                    <div className="flex items-center mb-2 text-purple-700 dark:text-purple-300">
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="font-semibold">Heure</span>
-                    </div>
-                    <p className="text-lg font-medium text-gray-900 dark:text-white">
-                      {formatTime(viewingProgram.hours_start)}
-                    </p>
-                  </div>
                 </div>
 
                 {/* Description */}
@@ -819,12 +735,12 @@ const Programs: React.FC = () => {
                   </h4>
                   <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
                     <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                      {viewingProgram.description || 'Aucune description fournie.'}
+                      {viewingType.description || 'Aucune description fournie.'}
                     </p>
                   </div>
                 </div>
 
-                {/* Dates de création et modification */}
+                {/* Dates */}
                 <div className="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-2">
                   <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
                     <div className="flex items-center mb-2 text-blue-700 dark:text-blue-300">
@@ -834,7 +750,7 @@ const Programs: React.FC = () => {
                       <span className="font-semibold">Créé le</span>
                     </div>
                     <p className="text-lg font-medium text-gray-900 dark:text-white">
-                      {viewingProgram.created_at ? new Date(viewingProgram.created_at).toLocaleString('fr-FR') : '—'}
+                      {formatDate(viewingType.created_at)}
                     </p>
                   </div>
 
@@ -846,7 +762,7 @@ const Programs: React.FC = () => {
                       <span className="font-semibold">Modifié le</span>
                     </div>
                     <p className="text-lg font-medium text-gray-900 dark:text-white">
-                      {viewingProgram.updated_at ? new Date(viewingProgram.updated_at).toLocaleString('fr-FR') : '—'}
+                      {formatDate(viewingType.updated_at)}
                     </p>
                   </div>
                 </div>
@@ -854,7 +770,7 @@ const Programs: React.FC = () => {
                 {/* Pied de page */}
                 <div className="flex justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
                   <button
-                    onClick={() => setViewingProgram(null)}
+                    onClick={() => setViewingType(null)}
                     className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
                     Fermer
@@ -869,4 +785,4 @@ const Programs: React.FC = () => {
   );
 };
 
-export default Programs;
+export default ProgramTypes;

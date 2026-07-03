@@ -12,7 +12,7 @@ import { getProgramTypes, type ProgramType } from '../api/programTypes';
 import { getCurrentUser, canManageContent } from '../utils/auth';
 import { getColorForType } from '../utils/colors';
 import Pagination from '../components/Pagination';
-import { Calendar, Clock, Plus, X, Eye, Edit3, Trash2, Tag, FileText, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, Plus, X, Eye, Edit3, Trash2, FileText, AlertTriangle } from 'lucide-react';
 
 const Programs: React.FC = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
