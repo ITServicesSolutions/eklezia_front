@@ -3,7 +3,7 @@ import Swal from 'sweetalert2';
 import { getCurrentUser, canManageContent } from '../utils/auth';
 import { getMedias, createMedia, deleteMedia } from '../api/medias';
 import Pagination from '../components/Pagination';
-import { Film, Plus, X, Eye, Trash2, FileText, AlertTriangle, Download, Image, Video, File } from 'lucide-react';
+import { Film, Plus, X, Eye, Trash2, FileText, AlertTriangle, Download, Image, Video } from 'lucide-react';
 
 export interface Media {
   id: number;
@@ -173,16 +173,7 @@ const Medias: React.FC = () => {
     window.location.href = '/login';
   };
 
-  const getMediaTypeIcon = (mediaType: string) => {
-    const type = mediaType?.toLowerCase() || '';
-    if (type.includes('image') || type.includes('jpg') || type.includes('jpeg') || type.includes('png') || type.includes('gif') || type.includes('webp')) {
-      return <Image size={16} className="text-neo-success" />;
-    }
-    if (type.includes('video') || type.includes('mp4') || type.includes('mov') || type.includes('avi') || type.includes('webm')) {
-      return <Video size={16} className="text-neo-primary" />;
-    }
-    return <File size={16} className="text-neo-text-secondary" />;
-  };
+
 
   const getMediaTypeLabel = (mediaType: string) => {
     const type = mediaType?.toLowerCase() || '';
@@ -420,11 +411,11 @@ const Medias: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span
                           className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{ color: getMediaTypeColor(media.media_type), background: getMediaTypeBg(media.media_type) }}
+                          style={{ color: getMediaTypeColor(media.media_type ?? ''), background: getMediaTypeBg(media.media_type ?? '') }}
                         >
-                          {getMediaTypeLabel(media.media_type)}
+                          {getMediaTypeLabel(media.media_type ?? '')}
                         </span>
-                        <span className="text-xs text-neo-text-secondary">{formatFileSize(media.file_size)}</span>
+                        <span className="text-xs text-neo-text-secondary">{formatFileSize(media.file_size ?? 0)}</span>
                         <span className="text-xs text-neo-text-secondary">{formatDate(media.created_at)}</span>
                       </div>
                     </div>
@@ -485,12 +476,12 @@ const Medias: React.FC = () => {
                       <td className="px-5 py-4">
                         <span
                           className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                          style={{ color: getMediaTypeColor(media.media_type), background: getMediaTypeBg(media.media_type) }}
+                          style={{ color: getMediaTypeColor(media.media_type ?? ''), background: getMediaTypeBg(media.media_type ?? '') }}
                         >
-                          {getMediaTypeLabel(media.media_type)}
+                          {getMediaTypeLabel(media.media_type ?? '')}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-sm text-neo-text-secondary">{formatFileSize(media.file_size)}</td>
+                      <td className="px-5 py-4 text-sm text-neo-text-secondary">{formatFileSize(media.file_size ?? 0)}</td>
                       <td className="px-5 py-4 text-sm text-neo-text-secondary">{formatDate(media.created_at)}</td>
                       <td className="px-5 py-4">
                         <div className="flex gap-1">
@@ -566,11 +557,11 @@ const Medias: React.FC = () => {
                       <div className="flex items-center gap-2 mt-2">
                         <span
                           className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                          style={{ color: getMediaTypeColor(viewingMedia.media_type), background: getMediaTypeBg(viewingMedia.media_type) }}
+                          style={{ color: getMediaTypeColor(viewingMedia.media_type ?? ''), background: getMediaTypeBg(viewingMedia.media_type ?? '') }}
                         >
-                          {getMediaTypeLabel(viewingMedia.media_type)}
+                          {getMediaTypeLabel(viewingMedia.media_type ?? '')}
                         </span>
-                        <span className="text-xs text-neo-text-secondary">{formatFileSize(viewingMedia.file_size)}</span>
+                        <span className="text-xs text-neo-text-secondary">{formatFileSize(viewingMedia.file_size ?? 0)}</span>
                         <span className="text-xs text-neo-text-secondary">ID: #{viewingMedia.id}</span>
                       </div>
                     </div>
@@ -622,7 +613,7 @@ const Medias: React.FC = () => {
                         <Download size={16} />
                         <span className="text-xs font-bold uppercase tracking-wider">Taille</span>
                       </div>
-                      <p className="text-sm font-semibold text-neo-text">{formatFileSize(viewingMedia.file_size)}</p>
+                      <p className="text-sm font-semibold text-neo-text">{formatFileSize(viewingMedia.file_size ?? 0)}</p>
                     </div>
                   </div>
                 </div>

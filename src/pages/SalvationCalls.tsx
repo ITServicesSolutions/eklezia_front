@@ -23,7 +23,6 @@ interface Stats {
 }
 
 const G  = '#c9a227';
-const GL = '#f0d060';
 const B  = '#1a3a8a';
 
 const SalvationCalls: React.FC = () => {
