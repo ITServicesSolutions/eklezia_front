@@ -2,10 +2,13 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 const PrivateRoute: React.FC = () => {
-  // This is a basic check. In a real app, you'd also want to verify the token's validity.
-  const isAuthenticated = !!localStorage.getItem('ekklesia-token');
+  const token = localStorage.getItem('ekklesia-token');
+  const role  = localStorage.getItem('ekklesia-role') || 'user';
+  const isAdmin = ['admin', 'moderator'].includes(role);
 
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+  if (!token)   return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/home"  replace />;
+  return <Outlet />;
 };
 
 export default PrivateRoute;
