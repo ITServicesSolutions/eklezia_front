@@ -4,12 +4,13 @@ import { Radio, Filter, CalendarDays, ChevronLeft, WifiOff, X, Play } from 'luci
 import { Link } from 'react-router-dom';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import axiosInstance from '../api/axiosInstance';
 
 const B  = '#1a3a8a';
 const BM = '#2952cc';
 
 const BG = '#f0f4ff';
-const API = import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com';
+
 
 interface LiveSession {
   id: number; title: string; description: string;
@@ -101,9 +102,8 @@ const LivePage: React.FC = () => {
   const [player, setPlayer]     = useState<{ url: string; title: string } | null>(null);
 
   const load = () =>
-    fetch(`${API}/api/v1/livestreams/`)
-      .then(r => r.json())
-      .then(d => setSessions(Array.isArray(d) ? d : []))
+    axiosInstance.get('/api/v1/livestreams/')
+      .then(r => setSessions(Array.isArray(r.data) ? r.data : []))
       .catch(() => {})
       .finally(() => setLoading(false));
 

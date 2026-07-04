@@ -5,6 +5,7 @@ import {
   Filter, Calendar, Search, X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import axiosInstance from '../api/axiosInstance';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
 
@@ -157,10 +158,8 @@ const VersetsPage: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com';
-    fetch(`${baseUrl}/api/v1/verse-of-day/`)
-      .then(r => r.json())
-      .then(d => setItems(Array.isArray(d) ? d : []))
+    axiosInstance.get('/api/v1/verse-of-day/')
+      .then(r => setItems(Array.isArray(r.data) ? r.data : []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

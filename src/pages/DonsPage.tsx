@@ -4,13 +4,14 @@ import { Heart, HandCoins, BookOpen, CheckCircle, ExternalLink, ChevronLeft, Ale
 import { Link } from 'react-router-dom';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import axiosInstance from '../api/axiosInstance';
 
 const B  = '#1a3a8a';
 const BM = '#2952cc';
 const G  = '#c9a227';
 const GL = '#f0d060';
 const BG = '#f0f4ff';
-const API = import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com';
+
 
 type DonType = 'don' | 'offrande' | 'dime';
 
@@ -67,9 +68,9 @@ const DonsPage: React.FC = () => {
       if (fullName) params.append('full_name', fullName);
       if (email)    params.append('email', email);
 
-      const res = await fetch(`${API}/api/v1/public-donations/init?${params}`, { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Erreur');
+      const res = await axiosInstance.post(`/api/v1/public-donations/init?${params}`);
+      const data = res.data;
+      if (res.status >= 400) throw new Error(data.detail || 'Erreur');
 
       // Ouvre KkiaPay dans un nouvel onglet
       window.open(data.payment_url, '_blank', 'noopener');

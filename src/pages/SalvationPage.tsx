@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, CheckCircle, User, Mail, Phone, MessageSquare, ChevronRight } from 'lucide-react';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import axiosInstance from '../api/axiosInstance';
 
 const B  = '#1a3a8a';
 const BM = '#2952cc';
@@ -10,7 +11,7 @@ const G  = '#c9a227';
 const GL = '#f0d060';
 const BG = '#f0f4ff';
 
-const API = import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com';
+
 
 const SalvationPage: React.FC = () => {
   const [step, setStep]         = useState<'prayer' | 'form' | 'done'>('prayer');
@@ -33,8 +34,8 @@ const SalvationPage: React.FC = () => {
       if (phone)    params.append('phone', phone);
       if (message)  params.append('message', message);
 
-      const res = await fetch(`${API}/api/v1/salvation-calls/?${params}`, { method: 'POST' });
-      if (!res.ok) throw new Error();
+      const res = await axiosInstance.post(`/api/v1/salvation-calls/?${params}`);
+      if (res.status >= 400) throw new Error();
       setStep('done');
     } catch {
       setError('Une erreur est survenue. Veuillez réessayer.');

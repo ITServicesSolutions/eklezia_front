@@ -14,6 +14,7 @@ import {
 import logo from '../assets/images/logo_eglise.jpeg';
 import PublicNavbar from '../components/PublicNavbar';
 import PublicFooter from '../components/PublicFooter';
+import axiosInstance from '../api/axiosInstance';
 import { Tv2 } from 'lucide-react';
 
 /* ── Couleurs ──────────────────────────────────────────── */
@@ -404,9 +405,8 @@ const PublicHome: React.FC = () => {
   const [allEmissions, setAllEmissions] = useState<Emission[]>([]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com'}/api/v1/weekly-emission/`)
-      .then(r => r.json())
-      .then(d => setAllEmissions(Array.isArray(d) ? d : []))
+    axiosInstance.get('/api/v1/weekly-emission/')
+      .then(r => setAllEmissions(Array.isArray(r.data) ? r.data : []))
       .catch(() => {});
   }, []);
 
