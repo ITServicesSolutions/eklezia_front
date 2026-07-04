@@ -404,7 +404,7 @@ const PublicHome: React.FC = () => {
   const [allEmissions, setAllEmissions] = useState<Emission[]>([]);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}/api/v1/weekly-emission/`)
+    fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com'}/api/v1/weekly-emission/`)
       .then(r => r.json())
       .then(d => setAllEmissions(Array.isArray(d) ? d : []))
       .catch(() => {});

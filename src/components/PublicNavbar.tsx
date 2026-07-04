@@ -25,8 +25,9 @@ const PublicNavbar: React.FC = () => {
 
   // Vérifie si un live est actif (toutes les 30s)
   useEffect(() => {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com';
     const check = () =>
-      fetch('http://localhost:8000/api/v1/livestreams/')
+      fetch(`${baseUrl}/api/v1/livestreams/`)
         .then(r => r.json())
         .then(d => setIsLive(Array.isArray(d) && d.some((s: any) => s.is_live)))
         .catch(() => {});

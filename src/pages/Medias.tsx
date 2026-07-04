@@ -19,7 +19,7 @@ export interface Media {
   updated_at?: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://eklezia.api.it-servicegroup.com';
 
 const Medias: React.FC = () => {
   const [medias, setMedias] = useState<Media[]>([]);

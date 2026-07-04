@@ -157,7 +157,8 @@ const VersetsPage: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/verse-of-day/')
+    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com';
+    fetch(`${baseUrl}/api/v1/verse-of-day/`)
       .then(r => r.json())
       .then(d => setItems(Array.isArray(d) ? d : []))
       .catch(() => {})

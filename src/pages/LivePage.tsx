@@ -9,7 +9,7 @@ const B  = '#1a3a8a';
 const BM = '#2952cc';
 
 const BG = '#f0f4ff';
-const API = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+const API = import.meta.env.VITE_API_BASE_URL ?? 'https://eklezia.api.it-servicegroup.com';
 
 interface LiveSession {
   id: number; title: string; description: string;
