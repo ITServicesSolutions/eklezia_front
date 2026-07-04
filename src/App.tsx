@@ -49,6 +49,9 @@ const AdminLayout: React.FC = () => {
 
 const AppRoutes: React.FC = () => (
   <Routes>
+    {/* Redirection racine → accueil public */}
+    <Route path="/" element={<Navigate to="/home" replace />} />
+
     {/* Pages publiques (sans connexion) */}
     <Route path="/home" element={<PublicHome />} />
     <Route path="/contact" element={<PastorPage />} />
@@ -66,7 +69,7 @@ const AppRoutes: React.FC = () => (
     {/* Pages admin (connexion requise) */}
     <Route element={<PrivateRoute />}>
       <Route element={<AdminLayout />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/users" element={<Users />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/programs" element={<Programs />} />

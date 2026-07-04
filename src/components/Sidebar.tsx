@@ -14,7 +14,7 @@ type NavItem = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/',              icon: <LayoutDashboard size={18} />, label: 'Dashboard'          },
+  { to: '/dashboard',     icon: <LayoutDashboard size={18} />, label: 'Dashboard'          },
   { to: '/users',         icon: <Users size={18} />,           label: 'Utilisateurs'       },
   { to: '/programs',      icon: <Calendar size={18} />,        label: 'Programmes'         },
   { to: '/program-types', icon: <Tags size={18} />,            label: 'Types de programme' },

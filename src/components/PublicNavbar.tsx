@@ -38,7 +38,7 @@ const PublicNavbar: React.FC = () => {
 
   const isAuth = !!localStorage.getItem('ekklesia-token');
   const role   = localStorage.getItem('ekklesia-role') || 'user';
-  const dest   = ['admin', 'moderator'].includes(role) ? '/' : '/home';
+  const dest   = ['admin', 'moderator'].includes(role) ? '/dashboard' : '/home';
 
   useEffect(() => {
     if (location.pathname !== '/home') { setScrolled(true); return; }

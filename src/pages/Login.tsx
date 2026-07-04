@@ -34,7 +34,7 @@ const Login: React.FC = () => {
       if (response.access_token) {
         localStorage.setItem('ekklesia-token', response.access_token);
         localStorage.setItem('ekklesia-role', response.role || 'user');
-        navigate(['admin', 'moderator'].includes(response.role) ? '/' : '/home');
+        navigate(['admin', 'moderator'].includes(response.role) ? '/dashboard' : '/home');
       }
     } catch (err: any) {
       setError(err.message || 'Échec de la connexion. Veuillez réessayer.');

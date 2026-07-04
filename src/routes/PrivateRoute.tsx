@@ -6,8 +6,8 @@ const PrivateRoute: React.FC = () => {
   const role  = localStorage.getItem('ekklesia-role') || 'user';
   const isAdmin = ['admin', 'moderator'].includes(role);
 
-  if (!token)   return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/home"  replace />;
+  if (!token)   return <Navigate to="/login"     replace />;
+  if (!isAdmin) return <Navigate to="/home"      replace />;
   return <Outlet />;
 };
 
